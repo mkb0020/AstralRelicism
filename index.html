@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Astral Relicism</title>
+<link rel="icon" href="data:,">
+<style>
+  @font-face { font-family: 'Share Tech Mono'; src: url('assets/fonts/share-tech-mono-latin-400-normal.woff2') format('woff2'); font-display: swap; }
+  @font-face { font-family: 'Orbitron'; font-weight: 600; src: url('assets/fonts/orbitron-latin-600-normal.woff2') format('woff2'); font-display: swap; }
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #0b0018; }
+  canvas { display: block; width: 100vw; height: 100vh; outline: none; }
+  #err { position: fixed; left: 14px; top: 12px; max-width: 620px; padding: 10px 14px; background: #170032; border: 1px solid #ff6200; color: #ff9a9e; font: 13px 'Share Tech Mono', Consolas, monospace; z-index: 20; box-shadow: 0 0 14px rgba(255, 98, 0, .5); }
+
+  /* LIVE TUNING PANEL (F3) */
+  #tuning { position: fixed; top: 10px; right: 10px; bottom: 10px; width: 300px; box-sizing: border-box; padding: 12px 14px; overflow-y: auto; z-index: 10;
+    background: rgba(23, 0, 50, .92); border: 1px solid #830cde; box-shadow: 0 0 18px rgba(131, 12, 222, .45), inset 0 0 24px rgba(55, 2, 90, .6);
+    color: #c4b5fd; font: 13px 'Share Tech Mono', Consolas, monospace; scrollbar-width: thin; scrollbar-color: #830cde #170032; }
+  #tuning[hidden] { display: none; }
+  #tuning h2 { margin: 0 0 6px; font: 600 14px 'Orbitron', 'Share Tech Mono', monospace; letter-spacing: 2px; color: #00ffff; text-shadow: 0 0 8px rgba(0, 255, 255, .6); }
+  #tuning p { margin: 0 0 10px; color: #9090C0; font-size: 12px; line-height: 1.4; }
+  #tuning label { display: grid; grid-template-columns: 1fr 84px 40px; gap: 6px; align-items: center; padding: 2px 0; }
+  #tuning input { width: 100%; box-sizing: border-box; background: #170032; border: 1px solid #37025a; color: #DBE2E9; padding: 3px 5px; font: inherit; text-align: right; border-radius: 2px; }
+  #tuning input:focus { outline: none; border-color: #00ffff; box-shadow: 0 0 6px rgba(0, 255, 255, .5); }
+  #tuning input.changed { border-color: #ff69b4; color: #FFC7FF; }
+  #tuning em { font-style: normal; color: #657383; font-size: 11px; }
+  #tuning .btns { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
+  #tuning button { background: #170032; border: 1px solid #830cde; color: #c4b5fd; padding: 5px 9px; border-radius: 2px; font: inherit; cursor: pointer; }
+  #tuning button:hover { border-color: #00ffff; color: #00ffff; }
+</style>
+</head>
+<body>
+<canvas id="game" tabindex="0"></canvas>
+<script type="module" src="src/main.js"></script>
+</body>
+</html>

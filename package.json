@@ -1,0 +1,11 @@
+{
+  "name": "astral-relicism",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Astral Relicism (working title) - plain JS + Canvas 2D metroidvania",
+  "scripts": {
+    "start": "node tools/serve.mjs",
+    "test": "node tests/physics.test.mjs"
+  }
+}

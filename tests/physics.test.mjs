@@ -1,0 +1,101 @@
+// HEADLESS FEEL CHECK: runs the real controller (no browser) and compares it with the numbers in ControllerNotes.md.
+//   node tests/physics.test.mjs      (or: npm test)
+import { readFileSync } from 'node:fs';
+import { Player, prepareCharacter } from '../src/player/player.js';
+import { buildRoom } from '../src/world/room.js';
+import { FIXED_DT, TILE } from '../src/config.js';
+
+const char = prepareCharacter(JSON.parse(readFileSync(new URL('../data/characters/nova.json', import.meta.url))));
+const greybox = JSON.parse(readFileSync(new URL('../data/rooms/greybox.json', import.meta.url)));
+
+// a fake input device: hold / press / release actions by hand
+function fakeInput() {
+  const held = new Set(), i = {
+    pressed: [], released: [], down: a => held.has(a), axisX: () => (held.has('right') ? 1 : 0) - (held.has('left') ? 1 : 0),
+    press(a) { held.add(a); i.pressed.push(a); }, release(a) { held.delete(a); i.released.push(a); }, hold(a) { held.add(a); }, let(a) { held.delete(a); },
+  };
+  return i;
+}
+function flatRoom(cols = 200, rows = 40, extra = () => {}) {   // open room: floor on the bottom 2 rows
+  const g = Array.from({ length: rows }, (_, y) => Array.from({ length: cols }, (_, x) => (y >= rows - 2 || x === 0 || x === cols - 1 ? '#' : '.')));
+  extra(g);
+  return buildRoom({ mask: g.map(r => r.join('')), spawn: [20, rows - 3] }, 'test');
+}
+function make(room = flatRoom(), abilities = {}) {
+  const p = new Player(char, room); Object.assign(p.abilities, abilities);
+  const input = fakeInput();
+  const step = (n = 1) => { for (let k = 0; k < n; k++) { p.step(FIXED_DT, input); input.pressed.length = input.released.length = 0; } };
+  step(5);                                                    // settle onto the floor
+  return { p, input, step };
+}
+function airtime(t, onStep) {                                 // run until she lands again -> { peak, time, dist }
+  const { p, step } = t, y0 = p.y, x0 = p.x; let minY = p.y, n = 0;
+  do { step(); n++; if (p.y < minY) minY = p.y; if (onStep) onStep(n); } while (!p.grounded && n < 500);
+  return { peak: y0 - minY, time: n * FIXED_DT, dist: Math.abs(p.x - x0) };
+}
+
+let failed = 0;
+function check(name, got, want, tol, unit = 'px') {
+  const ok = Math.abs(got - want) <= tol; if (!ok) failed++;
+  console.log(`${ok ? 'ok  ' : 'FAIL'}  ${name.padEnd(34)} ${got.toFixed(2).padStart(8)} ${unit}   (expected ${want} ± ${tol})`);
+}
+function truthy(name, cond, detail = '') { if (!cond) failed++; console.log(`${cond ? 'ok  ' : 'FAIL'}  ${name.padEnd(34)} ${detail}`); }
+
+// ----- full jump (hold)
+{ const t = make(); t.input.press('jump'); const a = airtime(t);
+  check('full jump: peak', a.peak, 218, 4); check('full jump: airtime', a.time, 1.08, 0.04, 's'); }
+// ----- time to apex
+{ const t = make(); t.input.press('jump'); let n = 0; do { t.step(); n++; } while (t.p.vy < 0);
+  check('full jump: time to apex', n * FIXED_DT, 0.56, 0.04, 's'); }
+// ----- tap hop: a quick tap (key up after 80 ms) and the shortest possible hop (key up after 1 step)
+{ const t = make(); t.input.press('jump'); const a = airtime(t, n => { if (n === 4) t.input.release('jump'); });
+  check('tap hop (80 ms tap): peak', a.peak, 100, 12); }
+{ const t = make(); t.input.press('jump'); const a = airtime(t, n => { if (n === 1) t.input.release('jump'); });
+  check('shortest hop: peak', a.peak, 72, 6); }
+// ----- releasing near the top changes nothing
+{ const t = make(); t.input.press('jump'); const a = airtime(t, () => { if (t.p.vy > -300 && t.p.vy < 0 && t.input.down('jump')) t.input.release('jump'); });
+  check('late release: peak unchanged', a.peak, 218, 4); }
+// ----- double jump at the apex
+{ const t = make(undefined, { doubleJump: true }); t.input.press('jump'); let done = false;
+  const a = airtime(t, () => { if (!done && t.p.vy >= 0) { done = true; t.input.release('jump'); t.input.press('jump'); } });
+  check('double jump: added height', a.peak - 218, 145, 6); }
+// ----- double jump is locked by default
+{ const t = make(); t.input.press('jump'); let done = false;
+  const a = airtime(t, () => { if (!done && t.p.vy >= 0) { done = true; t.input.release('jump'); t.input.press('jump'); } });
+  check('double jump locked: peak', a.peak, 218, 4); }
+// ----- ground dash distance (8 steps at 1500) and the slide-out after it
+{ const t = make(); const x0 = t.p.x; t.input.press('dash'); t.step(8);
+  check('dash: distance', t.p.x - x0, 240, 0.5); truthy('dash: ended after 0.16 s', t.p.stateName !== 'dash', t.p.stateName);
+  t.step(20); check('dash: slide-out', t.p.x - x0 - 240, 66, 15); check('dash: stops', t.p.vx, 0, 0.01, 'px/s'); }
+// ----- air dash: no gravity, one per airtime
+{ const t = make(); t.input.press('jump'); t.step(12); const y0 = t.p.y; t.input.press('dash'); t.step(8);
+  check('air dash: height change', t.p.y - y0, 0, 1); t.step(20); t.input.press('dash'); t.step(1);
+  truthy('air dash: only one per airtime', !t.p.grounded && t.p.dashCooldown <= 0 && t.p.stateName !== 'dash', t.p.stateName); }
+// ----- run: time to full speed, running jump distance
+{ const t = make(); t.input.hold('right'); let n = 0; while (t.p.vx < 650 && n < 50) { t.step(); n++; }
+  check('run: time to full speed', n * FIXED_DT, 0.065, 0.021, 's');
+  t.input.press('jump'); const a = airtime(t); check('running jump: distance', a.dist / TILE, 17.5, 1, 'tiles'); }
+// ----- coyote time + jump buffer
+{ const room = flatRoom(200, 40, g => { for (let x = 60; x < 199; x++) for (let y = 38; y < 40; y++) g[y][x] = '.'; for (let x = 60; x < 199; x++) g[39][x] = '#'; });
+  const t = make(room); t.p.x = 60 * TILE - 30; t.input.hold('right'); let n = 0; while (t.p.grounded && n < 50) { t.step(); n++; }
+  t.step(3); t.input.press('jump'); t.step(); truthy('coyote: jump 80 ms after the ledge', t.p.vy < -800, 'vy ' + t.p.vy.toFixed(0)); }
+{ const t = make(); t.input.press('jump'); t.step(4); t.input.release('jump'); let n = 0; while (t.p.vy <= 0 || t.p.y < t.p.room.h - 2 * TILE - 30) { t.step(); if (++n > 200) break; }
+  t.input.press('jump'); let jumped = false; for (let k = 0; k < 6; k++) { t.step(); if (t.p.vy < -800) jumped = true; }
+  truthy('buffer: press just before landing', jumped); }
+// ----- wall jump + wall slide (walls 6 tiles apart)
+{ const room = flatRoom(60, 60, g => { for (let y = 5; y < 58; y++) { g[y][26] = '#'; g[y][33] = '#'; } });
+  const t = make(room, { wallSlide: true }); t.p.x = 33 * TILE - 19; t.input.hold('right'); t.input.press('jump'); t.step(40);
+  truthy('wall slide: state', t.p.stateName === 'wallSlide', t.p.stateName); check('wall slide: fall speed', t.p.vy, 150, 30, 'px/s');   // capped at 150 before gravity is added, as in PLAY
+  const y0 = t.p.y; t.input.release('jump'); t.step(); t.input.press('jump'); let minY = t.p.y, kicked = false;
+  for (let k = 0; k < 40; k++) { t.step(); if (k === 0) kicked = t.p.vx < 0; if (t.p.y < minY) minY = t.p.y; }
+  truthy('wall jump: kicks away', kicked); check('wall jump: height', y0 - minY, 176, 8); }
+{ const room = flatRoom(60, 60, g => { for (let y = 5; y < 58; y++) g[y][33] = '#'; });
+  const t = make(room); t.p.x = 33 * TILE - 19; t.input.hold('right'); t.input.press('jump'); t.step(40);
+  truthy('wall slide locked by default', t.p.stateName !== 'wallSlide', t.p.stateName); }
+// ----- 148 px hurtbox walks through a 4-tile corridor; greybox room loads
+{ const room = flatRoom(80, 40, g => { for (let x = 30; x < 50; x++) for (let y = 0; y < 34; y++) g[y][x] = '#'; });
+  const t = make(room); t.input.hold('right'); t.step(120); truthy('4-tile corridor: passes', t.p.x > 50 * TILE, 'x ' + (t.p.x / TILE).toFixed(1) + ' tiles'); }
+{ const room = buildRoom(greybox, 'greybox'); const t = make(room); truthy('greybox: spawns on the floor', t.p.grounded, `${room.cols} x ${room.rows} tiles, ${room.solids.length} solids`); }
+
+console.log(failed ? `\n${failed} check(s) failed` : '\nall checks passed');
+process.exit(failed ? 1 : 0);

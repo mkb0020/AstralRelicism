@@ -1,0 +1,87 @@
+{
+  "format": "ar-character",
+  "version": 1,
+  "id": "nova",
+  "name": "Nova",
+
+  "physics": {
+    "moveSpeed": 650,
+    "jumpForce": 960,
+    "gravity": 2100,
+    "apexHang": 0.45,
+    "apexBand": 400,
+    "fallGravity": 1,
+    "maxFallSpeed": 1100,
+    "jumpCut": 0.5,
+    "jumpBufferMs": 100,
+    "coyoteMs": 100,
+    "groundAccel": 10000,
+    "groundDecel": 14000,
+    "airAccel": 8000,
+    "airDecel": 5000,
+    "airControl": 1,
+    "doubleJumpForce": 780,
+    "wallJumpForce": 860,
+    "wallJumpPush": 480,
+    "wallJumpLockMs": 180,
+    "wallSlideSpeed": 150,
+    "dashSpeed": 1500,
+    "dashTimeMs": 160,
+    "dashCooldownMs": 450
+  },
+
+  "hurtbox": { "w": 38, "h": 148 },
+
+  "abilities": {
+    "dash": true,
+    "slide": true,
+    "doubleJump": false,
+    "wallSlide": false,
+    "grapple": false
+  },
+
+  "timing": {
+    "jumpStartTime": 0.05,
+    "landTime": 0.07,
+    "landTimeMoving": 0.05,
+    "landMinImpact": 250,
+    "fallVelThreshold": 30
+  },
+
+  "sprite": {
+    "dir": "assets/images/nova/",
+    "frame": 400,
+    "scale": 0.5,
+    "sheets": {
+      "idle":      { "src": "idle.png",       "frames": 6, "snapFeet": true, "offsetX": -38 },
+      "run":       { "src": "run.png",        "frames": 8 },
+      "jump":      { "src": "jump.png",       "frames": 7, "snapFrames": [6] },
+      "wallSlide": { "src": "wall_slide.png", "frames": 1, "offsetX": 150 }
+    },
+    "anims": {
+      "idle":      { "sheet": "idle", "from": 0, "to": 5, "fps": 6 },
+      "run":       { "sheet": "run", "baseFps": 11, "cycle": [
+        { "frame": 0, "hold": 1.0, "lift": 3 },
+        { "frame": 1, "hold": 0.7, "lift": 0 },
+        { "frame": 2, "hold": 1.0, "lift": 3 },
+        { "frame": 3, "hold": 1.6, "lift": 7 },
+        { "frame": 4, "hold": 1.0, "lift": 3 },
+        { "frame": 5, "hold": 0.7, "lift": 0 },
+        { "frame": 6, "hold": 1.0, "lift": 3 },
+        { "frame": 7, "hold": 1.6, "lift": 7 }
+      ] },
+      "jumpStart": { "sheet": "jump", "frame": 0 },
+      "rise":      { "sheet": "jump", "frame": 1 },
+      "fall":      { "sheet": "jump", "frame": 5 },
+      "land":      { "sheet": "jump", "frame": 6 },
+      "wallSlide": { "sheet": "wallSlide", "frame": 0 },
+      "doubleJump": { "sheet": "jump", "flipIn": 2, "flip": 3, "flipOut": 4,
+                      "inTime": 0.04, "spinTime": 0.45, "outTime": 0.05, "turns": 2, "pivotY": 200 }
+    },
+    "squash": {
+      "stiffness": 500, "damping": 24,
+      "jump": [0.78, 1.28], "doubleJump": [0.9, 1.12], "dash": [1.1, 0.9], "landMax": [1.12, 0.78],
+      "landMinImpact": 150, "landFullImpact": 1300, "airStretch": 0.14, "airStretchVel": 1100
+    }
+  }
+}

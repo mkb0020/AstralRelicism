@@ -84,5 +84,4 @@ Later: slide + low kick, grapple, Witch Time, magic beam, down strike, slopes, k
 - **Up no longer jumps** (it is reserved for Up + attack). Jump is Z or Space.
 - **Dash direction** is the held direction (facing if none held; away from the wall when wall sliding).
 - **Wall contact only refills** the air dash / double jump once wall slide is unlocked.
-- **Idle sprite** is shifted 38 art px (`sheets.idle.offsetX`) so her body sits on the hurtbox centre instead of beside it.
 - No cape, particles, afterimages, lighting or critters yet - those were PLAY sandbox extras and come back as separate modules.

@@ -53,7 +53,7 @@
     "frame": 400,
     "scale": 0.5,
     "sheets": {
-      "idle":      { "src": "idle.png",       "frames": 6, "snapFeet": true, "offsetX": -38 },
+      "idle":      { "src": "idle.png",       "frames": 6, "snapFeet": true },
       "run":       { "src": "run.png",        "frames": 8 },
       "jump":      { "src": "jump.png",       "frames": 7, "snapFrames": [6] },
       "wallSlide": { "src": "wall_slide.png", "frames": 1, "offsetX": 150 }

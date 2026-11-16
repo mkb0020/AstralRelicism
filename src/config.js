@@ -7,8 +7,11 @@ export const MAX_STEPS_PER_FRAME = 8;   // after a long stall (tab switch) drop 
 
 export const PATHS = {
   character: 'data/characters/nova.json',
-  room: 'data/rooms/greybox.json',
+  world: 'data/world.json',
 };
+
+// Room transitions: fade out (the game holds still), swap rooms, fade in (the game is already running again)
+export const TRANSITION = { fadeOut: 0.12, fadeIn: 0.2, upBoost: 860 };   // upBoost = minimum upward speed when arriving through a floor hatch (px/s)
 
 // Greybox / debug colours (studio palette)
 export const COLORS = {
@@ -18,6 +21,7 @@ export const COLORS = {
   gridMajor: 'rgba(165, 90, 255, 0.30)',
   solid: '#37025a',
   solidEdge: '#A55AFF',
+  exit: '#58e84c',
   oneWay: '#67FEBD',
   label: '#C4C3D0',
   hurtbox: '#00ffff',

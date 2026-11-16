@@ -3,7 +3,8 @@
 import { readFileSync } from 'node:fs';
 import { Player, prepareCharacter } from '../src/player/player.js';
 import { buildRoom } from '../src/world/room.js';
-import { FIXED_DT, TILE } from '../src/config.js';
+import { FIXED_DT, TILE, TRANSITION } from '../src/config.js';
+import { createWorld } from '../src/world/world.js';
 
 const char = prepareCharacter(JSON.parse(readFileSync(new URL('../data/characters/nova.json', import.meta.url))));
 const greybox = JSON.parse(readFileSync(new URL('../data/rooms/greybox.json', import.meta.url)));
@@ -126,6 +127,45 @@ const kickDef = char.attacks.kick, airDef = char.attacks.airKick;
 { const t = make(); t.input.press('kick'); t.step(9); const r = t.p.activeHitboxes()[0];
   const u = make(); u.input.hold('left'); u.step(3); u.input.let('left'); u.step(10); u.input.press('kick'); u.step(9); const l = u.p.activeHitboxes()[0];
   truthy('hitbox: in front of her, both ways', !!r && !!l && r.x > t.p.x && l.x + l.w < u.p.x, r && l ? `right ${(r.x - t.p.x).toFixed(0)}, left ${(l.x + l.w - u.p.x).toFixed(0)}` : 'no hitbox'); }
+
+// ===== ROOMS + TRANSITIONS =====
+const readJSON = rel => JSON.parse(readFileSync(new URL('../' + rel, import.meta.url)));
+const worldJSON = readJSON('data/world.json');
+const world = createWorld(worldJSON, Object.fromEntries(Object.entries(worldJSON.rooms).map(([id, r]) => [id, readJSON(r.file)])));
+truthy('world: every exit is open and linked both ways', world.problems.length === 0, world.problems.join(' | ') || `${Object.keys(world.rooms).length} rooms`);
+function travel(t, steps) {                                   // the game's own hand-over, without the fade: -> list of rooms entered
+  const seen = [];
+  for (let k = 0; k < steps; k++) {
+    t.step(); const left = world.exitAt(t.p.room, t.p); if (!left) continue;
+    if (!left.exit) { seen.push('VOID'); break; }
+    const a = world.arrival(left.exit, t.p, TRANSITION.upBoost);
+    t.p.room = a.room; Object.assign(t.p, { x: a.x, y: a.y, vy: a.vy, touching: 0, grounded: false }); seen.push(a.room.id + '.' + a.exit.name);
+  }
+  return seen;
+}
+// ----- walk out of the east door -> standing on the annex's ledge, same height above the door's floor
+{ const t = make(world.rooms.greybox); Object.assign(t.p, { x: 147 * TILE, y: 35 * TILE }); t.input.hold('right'); const seen = travel(t, 40);
+  truthy('door: greybox east -> annex west', seen.join() === 'annex.west', seen.join() || 'never left');
+  truthy('door: lands on the annex floor', t.p.grounded && t.p.y === 12 * TILE && t.p.x > 0, `y ${t.p.y}, x ${t.p.x.toFixed(0)}`); }
+// ----- and straight back again
+{ const t = make(world.rooms.annex); t.input.hold('left'); const seen = travel(t, 40);
+  truthy('door: annex west -> greybox east', seen.join() === 'greybox.east' && t.p.grounded && t.p.y === 35 * TILE, seen.join() + ` y ${t.p.y}`); }
+// ----- crossing a door in the air keeps her height above the door's floor
+{ const t = make(world.rooms.greybox); Object.assign(t.p, { x: 150 * TILE - 5, y: 35 * TILE - 8, vx: 650, vy: 0, grounded: false }); t.input.hold('right');
+  const seen = travel(t, 1); truthy('door: crossed in the air', seen.join() === 'annex.west', seen.join() || 'never left');
+  check('door: height carried through', 12 * TILE - t.p.y, 8, 3); }
+// ----- fall through the hatch -> cellar ceiling, same sideways position; lands on the cellar floor
+{ const t = make(world.rooms.greybox); Object.assign(t.p, { x: 89.5 * TILE, y: 40 * TILE }); const seen = travel(t, 30);
+  truthy('hatch: greybox -> cellar', seen.join() === 'cellar.hatch', seen.join() || 'never left'); check('hatch: sideways position kept', t.p.x, 31.5 * TILE, 1);
+  travel(t, 120); truthy('hatch: lands on the ledge under it', t.p.grounded && t.p.room.id === 'cellar' && t.p.y === 5 * TILE, `y ${t.p.y}`); }
+// ----- jump up through the cellar hatch -> arrives in the pit with enough lift to step onto its floor
+{ const t = make(world.rooms.cellar); Object.assign(t.p, { x: 31.5 * TILE, y: 5 * TILE }); t.step(3); t.input.press('jump'); let seen = travel(t, 30);
+  truthy('hatch: cellar -> greybox', seen.join() === 'greybox.hatch', seen.join() || 'never left');
+  t.input.hold('left'); seen = travel(t, 80);
+  truthy('hatch: climbs out onto the pit floor', !seen.length && t.p.grounded && t.p.y === 41 * TILE, `${seen.join()} y ${t.p.y}`); }
+// ----- out of bounds where there is no exit
+{ const t = make(world.rooms.cellar); Object.assign(t.p, { x: -40, y: 300 }); const left = world.exitAt(t.p.room, t.p);
+  truthy('no exit on that side -> respawn', left && left.exit === null); }
 
 console.log(failed ? `\n${failed} check(s) failed` : '\nall checks passed');
 process.exit(failed ? 1 : 0);

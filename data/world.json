@@ -1,0 +1,28 @@
+{
+  "format": "ar-world",
+  "version": 1,
+  "start": "greybox",
+  "rooms": {
+    "greybox": {
+      "file": "data/rooms/greybox.json",
+      "exits": {
+        "east":  { "side": "right",  "from": 31, "to": 34, "leadsTo": "annex.west" },
+        "hatch": { "side": "bottom", "from": 88, "to": 91, "leadsTo": "cellar.hatch" }
+      }
+    },
+    "annex": {
+      "file": "data/rooms/annex.json",
+      "exits": {
+        "west":      { "side": "left", "from": 8,  "to": 11, "leadsTo": "greybox.east" },
+        "westLower": { "side": "left", "from": 22, "to": 25, "leadsTo": "cellar.east" }
+      }
+    },
+    "cellar": {
+      "file": "data/rooms/cellar.json",
+      "exits": {
+        "east":  { "side": "right", "from": 21, "to": 24, "leadsTo": "annex.westLower" },
+        "hatch": { "side": "top",   "from": 30, "to": 33, "leadsTo": "greybox.hatch" }
+      }
+    }
+  }
+}

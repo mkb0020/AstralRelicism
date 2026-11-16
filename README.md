@@ -31,7 +31,7 @@ Two layouts work at the same time:
 | Kick (air kick while airborne) | V | K |
 
 Debug keys: **F1** hitboxes + readout · **F2** squash, stretch + camera shake · **F3** live tuning panel · **F4** view mode (fit / pixel) ·
-**G** grid · **R** respawn · **P** pause · **O** step one frame · **1 / 2 / 3** toggle double jump / wall slide + jump / dash.
+**G** grid · **R** respawn at the last door · **N** jump to the next room · **P** pause · **O** step one frame · **1 / 2 / 3** toggle double jump / wall slide + jump / dash.
 
 Double jump and wall slide/jump start **locked** (as in the notes) - press 1 and 2 in the test room to try them.
 
@@ -70,18 +70,43 @@ Attacks are animation-driven and live in `data/characters/nova.json` under `"att
 - A jump pressed mid-attack waits in the jump buffer and fires at the cancel window or when the attack ends.
 - With **F1** on, active hitboxes draw in orange and the readout shows the attack's frame and phase. **P** then **O** steps through an attack one frame at a time. The test room has two training dummies.
 
+## Rooms and transitions
+
+`data/world.json` lists the rooms and how they join. Room files stay plain Tile Lab maps, so re-exporting a room never wipes its exits.
+
+```json
+"greybox": {
+  "file": "data/rooms/greybox.json",
+  "exits": {
+    "east":  { "side": "right",  "from": 31, "to": 34, "leadsTo": "annex.west" },
+    "hatch": { "side": "bottom", "from": 88, "to": 91, "leadsTo": "cellar.hatch" }
+  }
+}
+```
+
+- An exit is a gap in the room's outer edge. `side` is `left` / `right` / `top` / `bottom`; `from`..`to` are the tiles of the gap along that edge (rows for side doors, columns for hatches), counted from 0.
+- The gap itself must be air (`.`) in the room's mask; the exit only says where it leads. Each exit names its partner as `room.exit`, and the partner must point back.
+- Walking through a side door keeps her height above the door's floor; a hatch keeps her sideways position. Speed and state carry over. Arriving up through a floor hatch gives her at least `TRANSITION.upBoost` of upward speed so she clears the lip.
+- The room changes with a short fade (`TRANSITION` in `src/config.js`).
+- Mistakes (blocked opening, missing or one-way link) are printed as `[world]` warnings in the browser console at boot, and `npm test` fails on them.
+- With **F1** on, exits show as green bars labelled with where they lead.
+- To add a room: export it from Tile Lab into `data/rooms/`, add it to `world.json`, and give both sides an exit.
+
+Test rooms: `greybox` → east door → `annex` → lower west door → `cellar` → ceiling hatch → back into the greybox's wide pit.
+
 ## Layout
 
 ```
 index.html
 data/
   characters/nova.json     physics, hurtbox, abilities, sprite sheets + animation data
-  rooms/greybox.json       test room (Tile Lab map format: '#' solid, '=' one-way ledge, '.' air)
+  world.json               which rooms exist and how their exits join
+  rooms/*.json             test rooms (Tile Lab map format: '#' solid, '=' one-way ledge, '.' air)
 src/
   main.js                  boot, the per-step and per-frame functions
   config.js                tile size, view size, fixed timestep, colours
   core/      loop.js (fixed step + hitstop)  input.js (actions, buffered per step)  assets.js  math.js
-  world/     room.js (map -> collision shapes)  collision.js (AABB, X then Y)  roomRender.js (greybox)  dummy.js
+  world/     world.js (rooms + exits)  room.js (map -> collision shapes)  collision.js (AABB, X then Y)  roomRender.js (greybox)  dummy.js
   combat/    combat.js (hitboxes vs targets, hitstop + shake on a hit)
   player/    player.js (controller)  states.js (state machine)  physics.js (schema)  playerView.js (sprites, squash)
   render/    camera.js (follow + vertical dead zone, clamped to the room)
@@ -99,7 +124,7 @@ The controller has no DOM or drawing code, which is why it can be tested headles
 - [x] 1. Repo skeleton: fixed-step loop, input, asset loading, physics JSON
 - [x] 2. Player controller in a greybox room on the 40 px grid; F1 debug overlay; live tuning
 - [x] 3. Animations: idle / run / jump / fall / land / wall slide / dash / double jump
-- [ ] 4. Camera + room transitions; rooms exported from Tile Lab *(camera follow and the Tile Lab map format are in; transitions are not)*
+- [x] 4. Camera + room transitions; rooms in Tile Lab's map format
 - [x] 5. Attacks with frame data: kick + air kick *(slash, beam, down strike still to come)*
 
 Later: slide + low kick, grapple, Witch Time, magic beam, down strike, slopes, knockback / i-frames / damage, rebinding / gamepad.

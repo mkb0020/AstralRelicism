@@ -24,3 +24,17 @@ export function drawRoom(ctx, room, cam, showGrid) {
   ctx.fillStyle = COLORS.label; ctx.font = '16px "Share Tech Mono", Consolas, monospace'; ctx.textBaseline = 'middle'; ctx.textAlign = 'left';
   for (const l of room.labels) { const x = l.col * TILE, y = (l.row + 0.5) * TILE; if (x < x1 && x + 600 > x0 && y > y0 - 20 && y < y1 + 20) ctx.fillText(l.text, x, y); }
 }
+
+// debug: where the room's exits are and where they lead
+export function drawExits(ctx, room) {
+  ctx.font = '14px "Share Tech Mono", Consolas, monospace'; ctx.textBaseline = 'middle';
+  for (const e of room.exits || []) {
+    const side = e.side, len = e.hi - e.lo, t = 10;
+    const r = side === 'left' ? [0, e.lo, t, len] : side === 'right' ? [room.w - t, e.lo, t, len] : side === 'top' ? [e.lo, 0, len, t] : [e.lo, room.h - t, len, t];
+    ctx.fillStyle = COLORS.exit; ctx.globalAlpha = 0.8; ctx.fillRect(...r); ctx.globalAlpha = 1;
+    ctx.textAlign = side === 'right' ? 'right' : side === 'left' ? 'left' : 'center';
+    const tx = side === 'left' ? 18 : side === 'right' ? room.w - 18 : e.lo + len / 2, ty = side === 'top' ? 26 : side === 'bottom' ? room.h - 26 : e.lo + len / 2;
+    ctx.fillText(e.name + ' -> ' + e.leadsTo, tx, ty);
+  }
+  ctx.textAlign = 'left';
+}

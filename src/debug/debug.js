@@ -5,7 +5,7 @@ import { PHYSICS_FIELDS } from '../player/physics.js';
 
 const FONT = '"Share Tech Mono", Consolas, monospace';
 
-export function createDebug({ player, view, loop, char, toggleViewMode, viewModeName }) {
+export function createDebug({ player, view, loop, char, toggleViewMode, viewModeName, respawn, nextRoom }) {
   const dbg = { overlay: true, grid: true, jump: null, lastJump: null, fps: 0 };
   let fpsAcc = 0, fpsN = 0;
   const defaults = Object.assign({}, player.rawPhysics);
@@ -21,7 +21,8 @@ export function createDebug({ player, view, loop, char, toggleViewMode, viewMode
     else if (e.code === 'F3') panel.hidden = !panel.hidden;
     else if (e.code === 'F4') toggleViewMode();
     else if (e.code === 'KeyG') dbg.grid = !dbg.grid;
-    else if (e.code === 'KeyR') player.spawn(player.room.spawn.x, player.room.spawn.y);
+    else if (e.code === 'KeyR') respawn();
+    else if (e.code === 'KeyN') nextRoom();
     else if (e.code === 'KeyP') loop.paused = !loop.paused;
     else if (e.code === 'KeyO') { loop.paused = true; loop.stepOnce(); }
     else if (ABILITY_KEYS[e.code]) { const a = ABILITY_KEYS[e.code]; player.abilities[a] = !player.abilities[a]; }
@@ -55,14 +56,14 @@ export function createDebug({ player, view, loop, char, toggleViewMode, viewMode
     ctx.textBaseline = 'top'; ctx.textAlign = 'left';
     const ab = player.abilities, on = v => (v ? 'ON ' : 'off');
     ctx.font = '13px ' + FONT;
-    ctx.fillStyle = 'rgba(23, 0, 50, 0.72)'; ctx.fillRect(8, H - 52, 700, 44);
+    ctx.fillStyle = 'rgba(23, 0, 50, 0.72)'; ctx.fillRect(8, H - 52, 820, 44);
     ctx.fillStyle = COLORS.hudDim;
-    ctx.fillText('F1 debug   F2 squash + shake   F3 tuning   F4 view: ' + viewModeName() + '   G grid   R respawn   P pause   O step', 14, H - 24);
+    ctx.fillText('F1 debug   F2 squash + shake   F3 tuning   F4 view: ' + viewModeName() + '   G grid   R respawn   N next room   P pause   O step', 14, H - 24);
     ctx.fillText(`1 double jump ${on(ab.doubleJump)}   2 wall slide/jump ${on(ab.wallSlide)}   3 dash ${on(ab.dash)}`, 14, H - 44);
     if (!dbg.overlay) return;
     const lj = dbg.lastJump, f = (n, d = 0) => n.toFixed(d);
     const lines = [
-      `${dbg.fps} fps${loop.paused ? '   PAUSED' : ''}`,
+      `${dbg.fps} fps${loop.paused ? '   PAUSED' : ''}   room ${player.room.id || player.room.name}  (${player.room.cols} x ${player.room.rows})`,
       `state     ${player.stateName}` + (player.attack ? `   ${player.attack.name}  frame ${player.attack.frame}  ${player.attack.def.frames[player.attack.frame].phase}${player.canCancel('jump') ? '  (cancel window)' : ''}` : ''),
       `pos       ${f(player.x)}, ${f(player.y)}   (tile ${f(player.x / TILE, 1)}, ${f(player.y / TILE, 1)})`,
       `vel       ${f(player.vx)}, ${f(player.vy)}`,

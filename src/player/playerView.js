@@ -36,6 +36,7 @@ export class PlayerView {
       else if (e.type === 'jump' || e.type === 'wallJump') this.kick(S.jump);
       else if (e.type === 'doubleJump') this.kick(S.doubleJump);
       else if (e.type === 'dash') this.kick(S.dash);
+      else if (e.type === 'attack') { const sq = p.char.attacks[e.value].squash; if (sq) this.kick(sq); }
       else if (e.type === 'land' && e.value >= S.landMinImpact) {
         const t = Math.min(1, (e.value - S.landMinImpact) / (S.landFullImpact - S.landMinImpact));
         this.kick([1 + (S.landMax[0] - 1) * t, 1 + (S.landMax[1] - 1) * t]);
@@ -44,6 +45,13 @@ export class PlayerView {
     // which animation does this state show? (dash = run on the ground, the rise pose in the air)
     let name = p.stateName;
     if (name === 'dash') name = p.grounded ? 'run' : 'rise';
+    if (name === 'attack' && p.attack) {                   // attacks: the frame comes straight from the frame data
+      const d = p.attack.def, f = d.frames[p.attack.frame];
+      this.lastState = 'attack:' + d.name; this.animT = 0;
+      this.sheet = d.sheet; this.frame = f.frame != null ? f.frame : p.attack.frame; this.lift = 0; this.spin = 0;
+      this.offsetX = (this.sprite.sheets[d.sheet].offsetX || 0) * (p.facing < 0 ? -1 : 1);
+      this.updateSquash(p, dt); return;
+    }
     if (!A[name]) name = 'idle';
     const fresh = name !== this.lastState;
     if (fresh) { this.lastState = name; this.animT = 0; this.runIdx = 0; this.runT = 0; this.spinDir = p.facing < 0 ? -1 : 1; } else this.animT += dt;
@@ -75,7 +83,7 @@ export class PlayerView {
     if (!this.fxOn) { q.x = q.y = 1; q.vx = q.vy = 0; return; }
     let tx = 1, ty = 1;
     if (p.stateName === 'dash') { tx = S.dash[0]; ty = S.dash[1]; }
-    else if (!p.grounded && p.stateName !== 'wallSlide' && p.stateName !== 'doubleJump') {   // stretch with vertical speed
+    else if (!p.grounded && p.stateName !== 'wallSlide' && p.stateName !== 'doubleJump' && p.stateName !== 'attack') {   // stretch with vertical speed
       const s = Math.min(1, Math.abs(p.vy) / S.airStretchVel); ty = 1 + S.airStretch * s; tx = 1 - S.airStretch * s * 0.6;
     }
     const h = Math.min(dt, 1 / 30);

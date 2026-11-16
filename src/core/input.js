@@ -25,7 +25,7 @@ export function createInput(target = window, bindings = BINDINGS) {
   const input = {
     pressed: [],                                  // actions pressed since the last step (in order)
     released: [],                                 // actions fully released since the last step
-    down: action => (held.get(action) || 0) > 0,
+    down: action => (held.get(action) || 0) > 0 || input.pressed.includes(action),   // a tap shorter than one step still counts for that step
     axisX: () => (input.down('right') ? 1 : 0) - (input.down('left') ? 1 : 0),
     poll() {                                      // call once at the start of each fixed step
       input.pressed.length = input.released.length = 0;

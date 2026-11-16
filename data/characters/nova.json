@@ -40,6 +40,51 @@
     "grapple": false
   },
 
+  "buttons": {
+    "kick": { "ground": "kick", "air": "airKick" }
+  },
+
+  "attacks": {
+    "kick": {
+      "sheet": "kick",
+      "movement": "planted",
+      "hitstopMs": 90,
+      "shake": { "ms": 180, "strength": 10 },
+      "cancel": { "from": 5, "into": ["jump", "dash"] },
+      "frames": [
+        { "ms": 36 },
+        { "ms": 36 },
+        { "ms": 48 },
+        { "ms": 36 },
+        { "ms": 56, "hit": [{ "x": 15, "y": -150, "w": 95, "h": 60 }] },
+        { "ms": 38 }
+      ]
+    },
+    "airKick": {
+      "sheet": "airKick",
+      "air": true,
+      "oncePerAirtime": true,
+      "movement": "lunge",
+      "gravity": 0.3,
+      "vyKeep": 0.25,
+      "onLand": "cancel",
+      "hitstopMs": 60,
+      "shake": { "ms": 140, "strength": 8 },
+      "squash": [1.1, 0.92],
+      "cancel": { "from": 7, "into": ["jump", "dash"] },
+      "frames": [
+        { "ms": 35, "vx": 518 },
+        { "ms": 35, "vx": 506 },
+        { "ms": 35, "vx": 481 },
+        { "ms": 35, "vx": 444 },
+        { "ms": 48, "vx": 383, "hit": [{ "x": 5, "y": -80, "w": 100, "h": 75 }] },
+        { "ms": 48, "vx": 292, "hit": [{ "x": 5, "y": -80, "w": 100, "h": 75 }] },
+        { "ms": 48, "vx": 177, "hit": [{ "x": 5, "y": -80, "w": 100, "h": 75 }] },
+        { "ms": 36, "vx": 57 }
+      ]
+    }
+  },
+
   "timing": {
     "jumpStartTime": 0.05,
     "landTime": 0.07,
@@ -56,7 +101,9 @@
       "idle":      { "src": "idle.png",       "frames": 6, "snapFeet": true },
       "run":       { "src": "run.png",        "frames": 8 },
       "jump":      { "src": "jump.png",       "frames": 7, "snapFrames": [6] },
-      "wallSlide": { "src": "wall_slide.png", "frames": 1, "offsetX": 150 }
+      "wallSlide": { "src": "wall_slide.png", "frames": 1, "offsetX": 150 },
+      "kick":      { "src": "kick.png",       "frames": 6 },
+      "airKick":   { "src": "airKick.png",    "frames": 8 }
     },
     "anims": {
       "idle":      { "sheet": "idle", "from": 0, "to": 5, "fps": 6 },

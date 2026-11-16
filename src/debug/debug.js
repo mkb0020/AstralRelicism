@@ -44,6 +44,8 @@ export function createDebug({ player, view, loop, char, toggleViewMode, viewMode
     ctx.lineWidth = 1.5;
     ctx.strokeStyle = COLORS.hurtbox; ctx.strokeRect(x - player.w / 2, y - player.h, player.w, player.h);
     ctx.fillStyle = COLORS.accent; ctx.fillRect(x - 3, y - 3, 6, 6);                        // the anchor: feet, bottom-centre
+    ctx.strokeStyle = '#ff6200'; ctx.fillStyle = 'rgba(255, 98, 0, 0.25)';                  // active hitboxes of the attack frame on screen
+    for (const b of player.activeHitboxes()) { ctx.fillRect(b.x, b.y, b.w, b.h); ctx.strokeRect(b.x, b.y, b.w, b.h); }
     if (player.touching) { ctx.fillStyle = COLORS.wallTouch; ctx.fillRect(x + player.touching * (player.w / 2 + 2) - 2, y - player.h, 4, player.h); }
   };
 
@@ -53,15 +55,15 @@ export function createDebug({ player, view, loop, char, toggleViewMode, viewMode
     ctx.textBaseline = 'top'; ctx.textAlign = 'left';
     const ab = player.abilities, on = v => (v ? 'ON ' : 'off');
     ctx.font = '13px ' + FONT;
-    ctx.fillStyle = 'rgba(23, 0, 50, 0.72)'; ctx.fillRect(8, H - 52, 640, 44);
+    ctx.fillStyle = 'rgba(23, 0, 50, 0.72)'; ctx.fillRect(8, H - 52, 700, 44);
     ctx.fillStyle = COLORS.hudDim;
-    ctx.fillText('F1 debug   F2 squash   F3 tuning   F4 view: ' + viewModeName() + '   G grid   R respawn   P pause   O step', 14, H - 24);
+    ctx.fillText('F1 debug   F2 squash + shake   F3 tuning   F4 view: ' + viewModeName() + '   G grid   R respawn   P pause   O step', 14, H - 24);
     ctx.fillText(`1 double jump ${on(ab.doubleJump)}   2 wall slide/jump ${on(ab.wallSlide)}   3 dash ${on(ab.dash)}`, 14, H - 44);
     if (!dbg.overlay) return;
     const lj = dbg.lastJump, f = (n, d = 0) => n.toFixed(d);
     const lines = [
       `${dbg.fps} fps${loop.paused ? '   PAUSED' : ''}`,
-      `state     ${player.stateName}`,
+      `state     ${player.stateName}` + (player.attack ? `   ${player.attack.name}  frame ${player.attack.frame}  ${player.attack.def.frames[player.attack.frame].phase}${player.canCancel('jump') ? '  (cancel window)' : ''}` : ''),
       `pos       ${f(player.x)}, ${f(player.y)}   (tile ${f(player.x / TILE, 1)}, ${f(player.y / TILE, 1)})`,
       `vel       ${f(player.vx)}, ${f(player.vy)}`,
       `grounded  ${player.grounded ? 'yes' : 'no'}   wall ${player.touching === 1 ? 'right' : player.touching === -1 ? 'left' : '-'}   facing ${player.facing > 0 ? 'right' : 'left'}`,

@@ -9,6 +9,8 @@ import { Player, prepareCharacter } from './player/player.js';
 import { PlayerView } from './player/playerView.js';
 import { createCamera } from './render/camera.js';
 import { createDebug } from './debug/debug.js';
+import { resolveHits } from './combat/combat.js';
+import { Dummy } from './world/dummy.js';
 
 const canvas = document.getElementById('game'), ctx = canvas.getContext('2d');
 
@@ -30,6 +32,7 @@ async function boot() {
   const char = prepareCharacter(charJSON);
   const room = buildRoom(roomJSON, PATHS.room);
   const player = new Player(char, room);
+  const dummies = (roomJSON.dummies || []).map(d => new Dummy(d.col, d.row));
   const view = new PlayerView(char);
   await view.load();
   try { await document.fonts.load('14px "Share Tech Mono"'); } catch (e) { /* falls back to Consolas */ }
@@ -51,6 +54,8 @@ async function boot() {
     input.poll();
     player.step(dt, input);
     if (player.events.some(e => e.type === 'spawn')) { cam.viewW = screen.viewW; cam.viewH = screen.viewH; cam.snapTo(player.x, player.y, room); }
+    resolveHits(player, dummies, { hitStop: sec => loop.hitStop(sec), shake: (dur, str) => { if (view.fxOn) cam.shake(dur, str); } });
+    for (const d of dummies) d.update(dt);
     view.update(player, dt);
     debug.afterStep(dt);
   }
@@ -69,8 +74,9 @@ async function boot() {
     ctx.beginPath(); ctx.rect(screen.offX, screen.offY, screen.viewW * s, screen.viewH * s); ctx.clip();
     ctx.fillStyle = COLORS.bg; ctx.fillRect(screen.offX, screen.offY, screen.viewW * s, screen.viewH * s);
     ctx.translate(screen.offX, screen.offY); ctx.scale(s, s);
-    ctx.translate(Math.round(screen.viewW / 2 - cam.x), Math.round(screen.viewH / 2 - cam.y));
+    ctx.translate(Math.round(screen.viewW / 2 - cam.x - cam.shakeX), Math.round(screen.viewH / 2 - cam.y - cam.shakeY));
     drawRoom(ctx, room, cam, debug.grid);
+    for (const d of dummies) d.draw(ctx);
     view.draw(ctx, x, y, player.facing);
     debug.drawWorld(ctx, x, y);
     ctx.restore();
@@ -79,7 +85,7 @@ async function boot() {
   }
 
   loop.start();
-  window.AR = { player, room, cam, loop, view, input, screen };   // for poking around in the console
+  window.AR = { player, room, cam, loop, view, input, screen, dummies };   // for poking around in the console
 }
 
 boot().catch(e => {

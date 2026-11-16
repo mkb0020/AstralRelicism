@@ -12,6 +12,14 @@ export function prepareCharacter(json) {   // fill in derived values once, after
   char.timing = Object.assign({ jumpStartTime: 0.05, landTime: 0.07, landTimeMoving: 0.05, landMinImpact: 250, fallVelThreshold: 30 }, char.timing);
   char.timing.doubleJumpTime = dj ? dj.inTime + dj.spinTime + dj.outTime : 0.54;
   char.hurtbox = Object.assign({ w: 38, h: 148 }, char.hurtbox);
+  char.buttons = char.buttons || {};
+  char.attacks = char.attacks || {};
+  for (const [name, d] of Object.entries(char.attacks)) {   // frame data: add each frame's end time (s) and its phase
+    let t = 0; const hits = d.frames.map(f => !!(f.hit && f.hit.length)), first = hits.indexOf(true), last = hits.lastIndexOf(true);
+    d.name = name;
+    d.frames.forEach((f, i) => { t += f.ms / 1000; f.end = t; f.phase = first < 0 || i < first ? 'startup' : i > last ? 'recovery' : 'active'; });
+    d.total = t;
+  }
   return char;
 }
 
@@ -35,6 +43,7 @@ export class Player {
       coyoteT: 0, jumpBufT: 0, jumpCutReady: false,
       dashCooldown: 0, dashDir: 1, airDashReady: true, airJumpReady: true,
       wallJumpLock: 0, wallJumpDir: 1, airPeakFall: 0,
+      attack: null, airAttacksUsed: {},
       stateName: 'idle', state: STATES.idle, stateT: 0, stateDur: 0,
     });
     this.emit('spawn');
@@ -60,6 +69,7 @@ export class Player {
     for (const a of input.pressed) {
       if (a === 'jump') this.pressJump();
       else if (a === 'dash') this.tryDash(input);
+      else if (this.char.buttons[a]) this.tryAttack(a);
     }
     if (input.released.includes('jump') && !input.down('jump')) this.releaseJump();
     if (this.jumpBufT > 0) {               // a buffered jump fires the moment she can jump; if the key is already up by then it is a short hop
@@ -76,6 +86,7 @@ export class Player {
     // 3. refills + coyote time
     if (this.vy > P.maxFallSpeed) this.vy = P.maxFallSpeed;
     if (this.grounded || (this.touching !== 0 && this.abilities.wallSlide)) { this.airDashReady = true; this.airJumpReady = true; }
+    if (this.grounded) this.airAttacksUsed = {};   // once-per-airtime attacks only refill on the ground (not on walls)
     if (this.grounded) this.coyoteT = P.coyote; else if (this.coyoteT > 0) this.coyoteT -= dt;
 
     // 4. gravity + collision
@@ -126,6 +137,7 @@ export class Player {
 
   fireJump(allowAirJump) {                 // -> true if a jump happened
     const P = this.phys, dashing = this.stateName === 'dash';
+    if (this.attack && !this.canCancel('jump')) return false;   // mid-attack: the press waits in the jump buffer
     const canDouble = allowAirJump && this.abilities.doubleJump && this.airJumpReady && !this.grounded && this.coyoteT <= 0;
     if (dashing) {                         // mid-dash only the double jump cuts in; a ground / wall jump waits in the buffer
       if (!canDouble) return false;
@@ -158,6 +170,7 @@ export class Player {
 
   // ---------- DASH ----------
   tryDash(input) {
+    if (this.attack && !this.canCancel('dash')) return false;
     if (!this.abilities.dash || this.stateName === 'dash' || this.dashCooldown > 0 || this.wallJumpLock > 0) return false;
     if (!this.grounded && !this.airDashReady) return false;   // one air dash per airtime
     if (!this.grounded) this.airDashReady = false;
@@ -166,5 +179,32 @@ export class Player {
     this.dashCooldown = this.phys.dashCooldown;
     this.setState('dash'); this.emit('dash');
     return true;
+  }
+
+  // ---------- ATTACKS (frame data) ----------
+  canCancel(into) {                        // is the current attack inside a cancel window for this action?
+    const a = this.attack, c = a && a.def.cancel;
+    return !!c && a.frame >= c.from && c.into.includes(into);
+  }
+
+  tryAttack(button) {                      // button -> which attack, by situation (later: Up / Down + button variants)
+    const map = this.char.buttons[button]; if (!map) return false;
+    if (this.attack && !this.canCancel('attack')) return false;
+    const name = this.grounded ? map.ground : map.air, def = name && this.char.attacks[name];
+    if (!def) return false;
+    if (def.oncePerAirtime && this.airAttacksUsed[name]) return false;
+    if (def.oncePerAirtime) this.airAttacksUsed[name] = true;
+    if (def.vyKeep != null) this.vy *= def.vyKeep;
+    this.wallJumpLock = 0;
+    this.setState('attack');               // (leaves a dash / wall slide; exit() of the old attack clears this.attack first)
+    this.attack = { def, name, t: 0, frame: 0, dir: this.facing, hit: new Set() };
+    this.emit('attack', name);
+    return true;
+  }
+
+  activeHitboxes() {                       // world rects of the frame on screen (frame data is relative to her feet, facing right)
+    const a = this.attack; if (!a) return [];
+    const boxes = a.def.frames[a.frame].hit || [];
+    return boxes.map(b => ({ x: a.dir > 0 ? this.x + b.x : this.x - b.x - b.w, y: this.y + b.y, w: b.w, h: b.h }));
   }
 }

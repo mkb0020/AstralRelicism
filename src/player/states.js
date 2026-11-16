@@ -2,6 +2,13 @@
 // A new ability = a new state here (plus an unlock flag), not another branch in an if/else pile.
 // update() only decides velocities and transitions; Player.step() then runs gravity + collision for everyone.
 
+import { approach } from '../core/math.js';
+
+export function attackFrameAt(def, t) {     // which frame of the attack is showing at time t
+  let i = 0; while (i < def.frames.length - 1 && t >= def.frames[i].end - 1e-9) i++;
+  return i;
+}
+
 const groundState = p => (p.moving ? 'run' : 'idle');
 const airState = p => (p.vy > p.char.timing.fallVelThreshold ? 'fall' : 'rise');
 
@@ -93,5 +100,26 @@ export const STATES = {
     },
     exit(p) { p.gravityScale = 1; },
   },
-  // LATER: slide, grapple, attack states (frame data), witchTime ...
+  // ANIMATION-DRIVEN: every attack runs through this one state, driven by its frame data (data/characters/<id>.json, "attacks").
+  // The frame on screen decides the movement and the hitboxes; the movement still goes through collision like everything else.
+  attack: {
+    update(p, dt, input) {
+      const a = p.attack, d = a.def;
+      p.moving = input.axisX() !== 0;
+      if (d.air && p.grounded && d.onLand !== 'continue') return landing(p);   // an aerial that touches down ends there
+      a.frame = attackFrameAt(d, a.t);
+      const f = d.frames[a.frame];
+      p.facing = a.dir;
+      // movement type: planted / slowed / momentum kept / lunge
+      if (d.movement === 'lunge') p.vx = a.dir * (f.vx || 0);
+      else if (d.movement === 'planted') p.vx = 0;
+      else p.vx = approach(p.vx, 0, (p.grounded ? p.phys.groundDecel : p.phys.airDecel) * (d.decelScale != null ? d.decelScale : 1) * dt);   // slowed + momentum: coast down
+      if (f.vx != null && d.movement !== 'lunge') p.vx = a.dir * f.vx;          // a per-frame step / push on any attack
+      p.gravityScale = p.grounded ? 1 : (d.gravity != null ? d.gravity : 1);    // gravity during aerials: 1 normal, <1 reduced, 0 hang
+      a.t += dt;
+      if (a.t >= d.total - 1e-9) return p.grounded ? groundState(p) : airState(p);
+    },
+    exit(p) { p.gravityScale = 1; p.attack = null; },
+  },
+  // LATER: slide, grapple, witchTime ...
 };

@@ -97,5 +97,35 @@ function truthy(name, cond, detail = '') { if (!cond) failed++; console.log(`${c
   const t = make(room); t.input.hold('right'); t.step(120); truthy('4-tile corridor: passes', t.p.x > 50 * TILE, 'x ' + (t.p.x / TILE).toFixed(1) + ' tiles'); }
 { const room = buildRoom(greybox, 'greybox'); const t = make(room); truthy('greybox: spawns on the floor', t.p.grounded, `${room.cols} x ${room.rows} tiles, ${room.solids.length} solids`); }
 
+// ===== ATTACKS (frame data) =====
+const kickDef = char.attacks.kick, airDef = char.attacks.airKick;
+// ----- ground kick: planted, 0.25 s, phases, hitbox only on the active frame
+{ const t = make(); t.input.hold('right'); t.step(10); const x0 = t.p.x; t.input.press('kick'); t.step();
+  truthy('kick: enters attack', t.p.stateName === 'attack' && t.p.attack.name === 'kick', t.p.stateName);
+  let steps = 1, active = 0, x1 = t.p.x; while (t.p.stateName === 'attack' && steps < 60) { if (t.p.activeHitboxes().length) active++; t.step(); steps++; }
+  check('kick: planted (distance moved)', t.p.x - x1, 0, 0.01); check('kick: duration', (steps - 1) * FIXED_DT, kickDef.total, 0.021, 's');
+  truthy('kick: hitbox only while active', active >= 2 && active <= 4, active + ' steps');
+  truthy('kick: phases', kickDef.frames.map(f => f.phase[0]).join('') === 'ssssar', kickDef.frames.map(f => f.phase).join(' ')); }
+// ----- jump pressed mid-kick is buffered, then fires in the cancel window
+{ const t = make(); t.input.press('kick'); t.step(2); t.input.press('jump'); t.step();
+  truthy('kick: jump waits mid-attack', t.p.stateName === 'attack' && t.p.grounded);
+  let jumped = false; for (let k = 0; k < 20; k++) { t.step(); t.input.press('jump'); if (t.p.vy < -800) { jumped = true; break; } }
+  truthy('kick: jump cancels the recovery', jumped && t.p.stateName !== 'attack', t.p.stateName); }
+// ----- air kick: lunge, reduced gravity, once per airtime, ends on landing
+{ const t = make(); t.input.press('jump'); t.step(20); const x0 = t.p.x, vy0 = t.p.vy; t.input.press('kick'); t.step();
+  truthy('air kick: enters attack', t.p.attack && t.p.attack.name === 'airKick', t.p.stateName);
+  let n = 1; while (t.p.stateName === 'attack' && n < 60) { t.step(); n++; }
+  check('air kick: lunge distance', t.p.x - x0, 115, 15); check('air kick: duration', (n - 1) * FIXED_DT, airDef.total, 0.021, 's');
+  t.input.press('kick'); t.step(); truthy('air kick: once per airtime', t.p.stateName !== 'attack' && !t.p.grounded, t.p.stateName);
+  let m = 0; while (!t.p.grounded && m++ < 200) t.step(); t.step(2); t.input.press('kick'); t.step();
+  truthy('air kick: refills on the ground', t.p.attack && t.p.attack.name === 'kick', t.p.stateName); }
+{ const t = make(); t.input.press('jump'); t.step(2); t.input.release('jump'); let n = 0; while (t.p.vy < 300 && n++ < 100) t.step();
+  t.input.press('kick'); t.step(); let k = 0; while (!t.p.grounded && k++ < 100) t.step(); t.step();
+  truthy('air kick: landing ends it', t.p.stateName !== 'attack', t.p.stateName); }
+// ----- hitboxes mirror with facing
+{ const t = make(); t.input.press('kick'); t.step(9); const r = t.p.activeHitboxes()[0];
+  const u = make(); u.input.hold('left'); u.step(3); u.input.let('left'); u.step(10); u.input.press('kick'); u.step(9); const l = u.p.activeHitboxes()[0];
+  truthy('hitbox: in front of her, both ways', !!r && !!l && r.x > t.p.x && l.x + l.w < u.p.x, r && l ? `right ${(r.x - t.p.x).toFixed(0)}, left ${(l.x + l.w - u.p.x).toFixed(0)}` : 'no hitbox'); }
+
 console.log(failed ? `\n${failed} check(s) failed` : '\nall checks passed');
 process.exit(failed ? 1 : 0);

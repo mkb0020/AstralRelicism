@@ -10,7 +10,9 @@ export const CAM = {
 };
 
 export function createCamera() {
-  const cam = { x: 0, y: 0, fy: 0, viewW: 1920, viewH: 1080 };
+  const cam = { x: 0, y: 0, fy: 0, viewW: 1920, viewH: 1080, shakeX: 0, shakeY: 0 };
+  let shakeT = 0, shakeDur = 0, shakeStr = 0;
+  cam.shake = (dur, str) => { shakeT = shakeDur = dur; shakeStr = str; };
   const clampToRoom = room => {
     cam.x = room.w <= cam.viewW ? room.w / 2 : clamp(cam.x, cam.viewW / 2, room.w - cam.viewW / 2);
     cam.y = room.h <= cam.viewH ? room.h / 2 : clamp(cam.y, cam.viewH / 2, room.h - cam.viewH / 2);
@@ -27,6 +29,9 @@ export function createCamera() {
       cam.y += (cam.fy - cam.y) * Math.min(1, dt * CAM.lerpY);
     }
     clampToRoom(room);
+    // shake runs on real time (it keeps going during hitstop) and fades out
+    if (shakeT > 0) { shakeT -= dt; const k = shakeStr * Math.max(0, shakeT / shakeDur); cam.shakeX = (Math.random() * 2 - 1) * k; cam.shakeY = (Math.random() * 2 - 1) * k; }
+    else cam.shakeX = cam.shakeY = 0;
   };
   return cam;
 }

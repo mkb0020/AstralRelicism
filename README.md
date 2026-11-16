@@ -28,9 +28,9 @@ Two layouts work at the same time:
 | Jump (hold = higher, tap = hop) | Z | Space |
 | Attack *(not in yet)* | X | J |
 | Dash | C | Shift |
-| Kick *(not in yet)* | V | K |
+| Kick (air kick while airborne) | V | K |
 
-Debug keys: **F1** hitboxes + readout · **F2** squash & stretch · **F3** live tuning panel · **F4** view mode (fit / pixel) ·
+Debug keys: **F1** hitboxes + readout · **F2** squash, stretch + camera shake · **F3** live tuning panel · **F4** view mode (fit / pixel) ·
 **G** grid · **R** respawn · **P** pause · **O** step one frame · **1 / 2 / 3** toggle double jump / wall slide + jump / dash.
 
 Double jump and wall slide/jump start **locked** (as in the notes) - press 1 and 2 in the test room to try them.
@@ -44,6 +44,32 @@ All of Nova's numbers are in `data/characters/nova.json` - physics, hurtbox, sta
 - The `"physics"` block also accepts the rows of an OSW `character.json` (`[{ label, value, unit }]`) pasted in as-is.
 - The F1 readout shows the peak height, airtime and distance of the last jump, in px and tiles.
 
+## Attacks (frame data)
+
+Attacks are animation-driven and live in `data/characters/nova.json` under `"attacks"`; `"buttons"` says which attack a button starts on the ground and in the air.
+
+```json
+"kick": {
+  "sheet": "kick",
+  "movement": "planted",                        // planted | slowed | momentum | lunge
+  "hitstopMs": 90,                              // freeze when it connects (a whiff does not freeze)
+  "shake": { "ms": 180, "strength": 10 },
+  "cancel": { "from": 5, "into": ["jump", "dash"] },   // from frame 5 on, jump or dash cuts it short
+  "frames": [
+    { "ms": 36 }, { "ms": 36 }, { "ms": 48 }, { "ms": 36 },
+    { "ms": 56, "hit": [{ "x": 15, "y": -150, "w": 95, "h": 60 }] },
+    { "ms": 38 }
+  ]
+}
+```
+
+- One entry per sprite frame. `ms` = how long it shows. Frames before the first `hit` are **startup**, frames with a `hit` are **active**, the rest are **recovery**.
+- `hit` boxes are in world px relative to her feet, drawn facing right (they mirror automatically). `y` is negative going up.
+- `vx` on a frame = forward speed while that frame shows (the air kick's lunge). It goes through collision like all movement.
+- Aerials: `"air": true`, `"gravity"` (1 normal, 0.3 floaty, 0 hang), `"vyKeep"` (how much vertical speed survives the start), `"onLand"` (`"cancel"` or `"continue"`), `"oncePerAirtime"`.
+- A jump pressed mid-attack waits in the jump buffer and fires at the cancel window or when the attack ends.
+- With **F1** on, active hitboxes draw in orange and the readout shows the attack's frame and phase. **P** then **O** steps through an attack one frame at a time. The test room has two training dummies.
+
 ## Layout
 
 ```
@@ -55,7 +81,8 @@ src/
   main.js                  boot, the per-step and per-frame functions
   config.js                tile size, view size, fixed timestep, colours
   core/      loop.js (fixed step + hitstop)  input.js (actions, buffered per step)  assets.js  math.js
-  world/     room.js (map -> collision shapes)  collision.js (AABB, X then Y)  roomRender.js (greybox)
+  world/     room.js (map -> collision shapes)  collision.js (AABB, X then Y)  roomRender.js (greybox)  dummy.js
+  combat/    combat.js (hitboxes vs targets, hitstop + shake on a hit)
   player/    player.js (controller)  states.js (state machine)  physics.js (schema)  playerView.js (sprites, squash)
   render/    camera.js (follow + vertical dead zone, clamped to the room)
   debug/     debug.js (overlay, tuning panel, debug keys)
@@ -73,7 +100,7 @@ The controller has no DOM or drawing code, which is why it can be tested headles
 - [x] 2. Player controller in a greybox room on the 40 px grid; F1 debug overlay; live tuning
 - [x] 3. Animations: idle / run / jump / fall / land / wall slide / dash / double jump
 - [ ] 4. Camera + room transitions; rooms exported from Tile Lab *(camera follow and the Tile Lab map format are in; transitions are not)*
-- [ ] 5. Attacks with frame data (kick + air kick first)
+- [x] 5. Attacks with frame data: kick + air kick *(slash, beam, down strike still to come)*
 
 Later: slide + low kick, grapple, Witch Time, magic beam, down strike, slopes, knockback / i-frames / damage, rebinding / gamepad.
 
@@ -84,4 +111,7 @@ Later: slide + low kick, grapple, Witch Time, magic beam, down strike, slopes, k
 - **Up no longer jumps** (it is reserved for Up + attack). Jump is Z or Space.
 - **Dash direction** is the held direction (facing if none held; away from the wall when wall sliding).
 - **Wall contact only refills** the air dash / double jump once wall slide is unlocked.
+- **Hitstop and shake only happen when a kick connects.** PLAY froze on every kick because there was nothing to hit.
+- **Kick recovery can be cancelled** into a jump or dash on its last frame.
+- The swoosh effect is not drawn separately (the new kick sheets have it in the art).
 - No cape, particles, afterimages, lighting or critters yet - those were PLAY sandbox extras and come back as separate modules.

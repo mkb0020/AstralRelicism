@@ -29,3 +29,10 @@ export function moveBody(b, room, dt) {
   b.touching = 0;
   for (const s of room.solids) if (b.x - hw - 1 < s.x + s.w && b.x + hw + 1 > s.x && b.y - b.h < s.y + s.h && b.y > s.y) b.touching = b.x < s.x + s.w / 2 ? 1 : -1;
 }
+
+// does a feet-anchored box (centre x, bottom y) overlap any solid? (one-way ledges never block)
+export function boxHitsSolid(room, x, y, w, h) {
+  const l = x - w / 2, r = x + w / 2, t = y - h;
+  for (const s of room.solids) if (l < s.x + s.w && r > s.x && t < s.y + s.h && y > s.y) return true;
+  return false;
+}

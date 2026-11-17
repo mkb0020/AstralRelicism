@@ -25,6 +25,11 @@ export const PHYSICS_FIELDS = [
   ['dashSpeed',        'Dash speed',        'px/s',   50,   1500],
   ['dashTimeMs',       'Dash time',         'ms',     10,   160],
   ['dashCooldownMs',   'Dash cooldown',     'ms',     10,   450],
+  ['slideSpeed',       'Slide speed',       'px/s',   50,   1100],
+  ['slideFriction',    'Slide friction',    'px/s²',  100,  1500],
+  ['slideTimeMs',      'Slide time',        'ms',     10,   380],
+  ['slideMinSpeed',    'Slide min speed',   'px/s',   10,   350],
+  ['slideCooldownMs',  'Slide cooldown',    'ms',     10,   250],
 ];
 export const PHYSICS_DEFAULTS = Object.fromEntries(PHYSICS_FIELDS.map(f => [f[0], f[4]]));
 
@@ -51,5 +56,7 @@ export function normalizePhysics(raw) {
   p.wallJumpLock = raw.wallJumpLockMs / 1000;
   p.dashTime = raw.dashTimeMs / 1000;
   p.dashCooldown = raw.dashCooldownMs / 1000;
+  p.slideTime = raw.slideTimeMs / 1000;
+  p.slideCooldown = raw.slideCooldownMs / 1000;
   return p;
 }

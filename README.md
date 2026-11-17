@@ -28,6 +28,7 @@ Two layouts work at the same time:
 | Jump (hold = higher, tap = hop) | Z | Space |
 | Slash (air slash while airborne) | X | J |
 | Dash | C | Shift |
+| Slide (on the ground) | ↓ + C | S + Shift |
 | Kick (air kick while airborne) | V | K |
 | Magic beam (ground only for now) | F | L |
 
@@ -73,6 +74,13 @@ Attacks are animation-driven and live in `data/characters/nova.json` under `"att
 - Aerials: `"air": true`, `"gravity"` (1 normal, 0.3 floaty, 0 hang), `"vyKeep"` (how much vertical speed survives the start), `"onLand"` (`"cancel"` or `"continue"`), `"oncePerAirtime"`.
 - A jump pressed mid-attack waits in the jump buffer and fires at the cancel window or when the attack ends.
 - With **F1** on, active hitboxes draw in orange and the readout shows the attack's frame and phase. **P** then **O** steps through an attack one frame at a time. The test room has two training dummies.
+
+## Slide
+
+Down + Dash on the ground. Her body drops to 110 × 60 (`"slide"` in `nova.json`), she shoots forward at `slideSpeed` and slows by `slideFriction` for `slideTimeMs`, then stands up.
+- She only stands up where there is room. Under a low ceiling she keeps sliding at `slideMinSpeed` until she is clear, and jump / attacks wait until then. A 2-tile gap is enough; the annex has a crawlspace to try it.
+- Sliding off a ledge turns into a normal fall. Jumping out of a slide keeps its speed.
+- Feet first, so it is also the low kick: the `"hit"` box in `"slide"` hits each target once per slide. Delete `"hit"` to make it a plain slide.
 
 ## Rooms and transitions
 

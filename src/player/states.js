@@ -125,5 +125,21 @@ export const STATES = {
     },
     exit(p) { p.gravityScale = 1; p.attack = null; },
   },
-  // LATER: slide, grapple, witchTime ...
+  // SLIDE (Down + Dash on the ground): a low, wide body that shoots forward and slows down. Feet first, so it is also the low kick.
+  // She only stands up where there is room: under a low ceiling she keeps sliding (at slideMinSpeed) until she is clear.
+  slide: {
+    enter(p) { p.stateDur = p.phys.slideTime; },
+    update(p, dt, input) {
+      const P = p.phys, dir = p.slideDir;
+      p.moving = input.axisX() !== 0;
+      if (p.slideStrike) p.slideStrike.t += dt;
+      if (!p.grounded && p.canStand()) { p.standUp(); return airState(p); }          // slid off a ledge
+      if (p.vx === 0 && p.stateT > 0 && !p.canStand()) p.slideDir = -dir;            // stuck in a dead-end crawlspace: turn around
+      const speed = Math.max(P.slideMinSpeed, Math.abs(p.vx) - P.slideFriction * dt);
+      p.vx = p.slideDir * (p.stateT === 0 ? P.slideSpeed : speed); p.facing = p.slideDir;
+      if (p.stateT + dt >= p.stateDur - 1e-9 && p.grounded && p.canStand()) { p.standUp(); return groundState(p); }
+    },
+    exit(p) { p.standUp(); },
+  },
+  // LATER: grapple, witchTime ...
 };

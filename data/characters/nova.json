@@ -27,10 +27,22 @@
     "wallSlideSpeed": 150,
     "dashSpeed": 1500,
     "dashTimeMs": 160,
-    "dashCooldownMs": 450
+    "dashCooldownMs": 450,
+    "slideSpeed": 1100,
+    "slideFriction": 1500,
+    "slideTimeMs": 380,
+    "slideMinSpeed": 350,
+    "slideCooldownMs": 250
   },
 
   "hurtbox": { "w": 38, "h": 148 },
+
+  "slide": {
+    "w": 110, "h": 60,
+    "hit": [{ "x": 25, "y": -48, "w": 40, "h": 46 }],
+    "hitstopMs": 60,
+    "shake": { "ms": 120, "strength": 6 }
+  },
 
   "abilities": {
     "dash": true,
@@ -163,7 +175,8 @@
       "kick":      { "src": "kick.png",       "frames": 6 },
       "airKick":   { "src": "airKick.png",    "frames": 8 },
       "slash":     { "src": "slash.png",      "frames": 5 },
-      "magicBeam": { "src": "magicBeam.png",  "frames": 8 }
+      "magicBeam": { "src": "magicBeam.png",  "frames": 8 },
+      "slide":     { "src": "slide.png",      "frames": 1, "offsetX": -89 }
     },
     "anims": {
       "idle":      { "sheet": "idle", "from": 0, "to": 5, "fps": 6 },
@@ -182,6 +195,7 @@
       "fall":      { "sheet": "jump", "frame": 5 },
       "land":      { "sheet": "jump", "frame": 6 },
       "wallSlide": { "sheet": "wallSlide", "frame": 0 },
+      "slide":     { "sheet": "slide", "frame": 0 },
       "doubleJump": { "sheet": "jump", "flipIn": 2, "flip": 3, "flipOut": 4,
                       "inTime": 0.04, "spinTime": 0.45, "outTime": 0.05, "turns": 2, "pivotY": 200 }
     },

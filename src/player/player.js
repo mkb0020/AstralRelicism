@@ -1,7 +1,7 @@
 // THE PLAYER CONTROLLER. No DOM, no drawing: pure simulation (so it can be tested headless).
 // Position = FEET (bottom-centre). Units: world px, seconds. One call to step() = one fixed step.
 import { approach, smoothstep } from '../core/math.js';
-import { moveBody } from '../world/collision.js';
+import { moveBody, boxHitsSolid } from '../world/collision.js';
 import { readPhysics, normalizePhysics } from './physics.js';
 import { STATES } from './states.js';
 
@@ -12,6 +12,7 @@ export function prepareCharacter(json) {   // fill in derived values once, after
   char.timing = Object.assign({ jumpStartTime: 0.05, landTime: 0.07, landTimeMoving: 0.05, landMinImpact: 250, fallVelThreshold: 30 }, char.timing);
   char.timing.doubleJumpTime = dj ? dj.inTime + dj.spinTime + dj.outTime : 0.54;
   char.hurtbox = Object.assign({ w: 38, h: 148 }, char.hurtbox);
+  char.slide = Object.assign({ w: 110, h: 60 }, char.slide, { name: 'slide' });
   char.buttons = char.buttons || {};
   char.fx = char.fx || {};
   char.attacks = char.attacks || {};
@@ -45,6 +46,7 @@ export class Player {
       dashCooldown: 0, dashDir: 1, airDashReady: true, airJumpReady: true,
       wallJumpLock: 0, wallJumpDir: 1, airPeakFall: 0,
       attack: null, airAttacksUsed: {},
+      w: this.char.hurtbox.w, h: this.char.hurtbox.h, slideDir: 1, slideCooldown: 0, slideStrike: null,
       stateName: 'idle', state: STATES.idle, stateT: 0, stateDur: 0,
     });
     this.emit('spawn');
@@ -69,7 +71,7 @@ export class Player {
     // 1. edge inputs (buffered by the input module, handed over at the start of the step)
     for (const a of input.pressed) {
       if (a === 'jump') this.pressJump();
-      else if (a === 'dash') this.tryDash(input);
+      else if (a === 'dash') { if (!(input.down('down') && this.trySlide(input))) this.tryDash(input); }
       else if (this.char.buttons[a]) this.tryAttack(a);
     }
     if (input.released.includes('jump') && !input.down('jump')) this.releaseJump();
@@ -80,6 +82,7 @@ export class Player {
 
     // 2. the current state decides velocities + the next state
     if (this.dashCooldown > 0) this.dashCooldown -= dt;
+    if (this.slideCooldown > 0) this.slideCooldown -= dt;
     const next = this.state.update(this, dt, input);
     this.stateT += dt;
     if (next && next !== this.stateName) this.setState(next);
@@ -139,6 +142,7 @@ export class Player {
   fireJump(allowAirJump) {                 // -> true if a jump happened
     const P = this.phys, dashing = this.stateName === 'dash';
     if (this.attack && !this.canCancel('jump')) return false;   // mid-attack: the press waits in the jump buffer
+    if (this.stateName === 'slide' && !this.canStand()) return false;   // no room to stand: it waits in the buffer
     const canDouble = allowAirJump && this.abilities.doubleJump && this.airJumpReady && !this.grounded && this.coyoteT <= 0;
     if (dashing) {                         // mid-dash only the double jump cuts in; a ground / wall jump waits in the buffer
       if (!canDouble) return false;
@@ -172,6 +176,7 @@ export class Player {
   // ---------- DASH ----------
   tryDash(input) {
     if (this.attack && !this.canCancel('dash')) return false;
+    if (this.stateName === 'slide') return false;
     if (!this.abilities.dash || this.stateName === 'dash' || this.dashCooldown > 0 || this.wallJumpLock > 0) return false;
     if (!this.grounded && !this.airDashReady) return false;   // one air dash per airtime
     if (!this.grounded) this.airDashReady = false;
@@ -180,6 +185,34 @@ export class Player {
     this.dashCooldown = this.phys.dashCooldown;
     this.setState('dash'); this.emit('dash');
     return true;
+  }
+
+  // ---------- SLIDE ----------
+  canStand() {                             // would her standing hurtbox fit where she is now?
+    return !boxHitsSolid(this.room, this.x, this.y, this.char.hurtbox.w, this.char.hurtbox.h);
+  }
+
+  trySlide(input) {
+    if (!this.abilities.slide || !this.grounded || this.slideCooldown > 0 || this.stateName === 'slide' || this.wallJumpLock > 0) return false;
+    if (this.attack && !this.canCancel('dash')) return false;
+    const S = this.char.slide, held = input ? input.axisX() : 0, dir = held !== 0 ? held : this.facing;
+    // the slide body is wider: grow it, then nudge her away from a wall it would poke into. No room at all -> no slide.
+    let x = this.x;
+    for (const s of this.room.solids) {
+      if (!(this.y - S.h < s.y + s.h && this.y > s.y && x - S.w / 2 < s.x + s.w && x + S.w / 2 > s.x)) continue;
+      x = s.x + s.w / 2 > x ? Math.min(x, s.x - S.w / 2) : Math.max(x, s.x + s.w + S.w / 2);
+    }
+    if (Math.abs(x - this.x) > (S.w - this.w) / 2 + 0.01 || boxHitsSolid(this.room, x, this.y, S.w, S.h)) return false;
+    this.x = x; this.w = S.w; this.h = S.h; this.slideDir = dir;
+    this.slideCooldown = this.phys.slideCooldown;
+    this.slideStrike = S.hit ? { def: S, name: 'slide', t: 0, dir, hit: new Map() } : null;   // feet first = the low kick
+    this.setState('slide'); this.emit('slide');
+    return true;
+  }
+
+  standUp() {                              // back to the standing hurtbox (callers check canStand first)
+    if (this.h === this.char.hurtbox.h && this.w === this.char.hurtbox.w) return;
+    this.w = this.char.hurtbox.w; this.h = this.char.hurtbox.h; this.slideStrike = null;
   }
 
   // ---------- ATTACKS (frame data) ----------
@@ -191,6 +224,7 @@ export class Player {
   tryAttack(button) {                      // button -> which attack, by situation (later: Up / Down + button variants)
     const map = this.char.buttons[button]; if (!map) return false;
     if (this.attack && !this.canCancel('attack')) return false;
+    if (this.stateName === 'slide' && !this.canStand()) return false;
     const name = this.grounded ? map.ground : map.air, def = name && this.char.attacks[name];
     if (!def) return false;
     if (def.oncePerAirtime && this.airAttacksUsed[name]) return false;
@@ -205,6 +239,8 @@ export class Player {
   }
 
   activeHitboxes() {                       // world rects of the frame on screen (frame data is relative to her feet, facing right)
+    const ss = this.slideStrike;
+    if (ss) return ss.def.hit.map(b => ({ x: ss.dir > 0 ? this.x + b.x : this.x - b.x - b.w, y: this.y + b.y, w: b.w, h: b.h }));
     const a = this.attack; if (!a) return [];
     const f = a.def.frames[a.frame];
     const boxes = (f.hit || []).map(b => ({ x: a.dir > 0 ? this.x + b.x : this.x - b.x - b.w, y: this.y + b.y, w: b.w, h: b.h }));

@@ -35,7 +35,7 @@ export class PlayerView {
       if (e.type === 'spawn') this.reset();
       else if (e.type === 'jump' || e.type === 'wallJump') this.kick(S.jump);
       else if (e.type === 'doubleJump') this.kick(S.doubleJump);
-      else if (e.type === 'dash') this.kick(S.dash);
+      else if (e.type === 'dash' || e.type === 'slide') this.kick(S.dash);
       else if (e.type === 'attack') { const sq = p.char.attacks[e.value].squash; if (sq) this.kick(sq); }
       else if (e.type === 'land' && e.value >= S.landMinImpact) {
         const t = Math.min(1, (e.value - S.landMinImpact) / (S.landFullImpact - S.landMinImpact));

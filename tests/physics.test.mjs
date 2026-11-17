@@ -168,6 +168,34 @@ const kickDef = char.attacks.kick, airDef = char.attacks.airKick;
   while (t.p.stateName === 'attack') { t.step(); resolveHits(t.p, [target], fx); }
   truthy('beam: hits repeatedly', target.hits >= 4 && target.hits <= 6, target.hits + ' hits'); truthy('beam: hitstop once', stops === 1, stops + ''); }
 
+// ===== SLIDE =====
+// ----- Down + Dash: low body, shoots forward, slows, stands back up
+{ const t = make(); const x0 = t.p.x; t.input.hold('down'); t.input.press('dash'); t.step();
+  truthy('slide: Down + Dash slides (not a dash)', t.p.stateName === 'slide' && t.p.h === char.slide.h, t.p.stateName);
+  t.input.let('down'); let n = 1; while (t.p.stateName === 'slide' && n < 100) { t.step(); n++; }
+  check('slide: time', (n - 1) * FIXED_DT, char.physics.slideTimeMs / 1000, 0.021, 's');
+  check('slide: distance', (t.p.x - x0) / TILE, 7.6, 0.6, 'tiles'); truthy('slide: stands back up', t.p.h === char.hurtbox.h, 'h ' + t.p.h); }
+// ----- under a 2-tile ceiling she keeps sliding until there is room, and can't jump out
+{ const room = flatRoom(120, 30, g => { for (let x = 30; x < 70; x++) for (let y = 1; y < 26; y++) g[y][x] = '#'; });   // tunnel cols 30-69, 2 tiles high
+  const t = make(room); t.p.x = 27 * TILE; t.input.hold('right'); t.step(3); t.input.press('dash'); t.input.hold('down'); t.step(); t.input.let('down');
+  truthy('slide: enters the crawlspace', t.p.stateName === 'slide');
+  let jumped = false, n = 0; while (t.p.x < 70 * TILE && n++ < 400) { if (n === 30) t.input.press('jump'); t.step(); if (t.p.vy < -100) jumped = true; }
+  truthy('slide: crawls all the way through', t.p.x >= 70 * TILE, `x ${(t.p.x / TILE).toFixed(1)} tiles after ${n} steps`);
+  truthy('slide: no jumping in a crawlspace', !jumped);
+  t.input.let('right'); t.step(30); truthy('slide: stands up outside', t.p.h === char.hurtbox.h && t.p.stateName !== 'slide', t.p.stateName); }
+// ----- a 1.5-tile gap is too low even to slide into
+{ const room = flatRoom(120, 30, g => { for (let x = 30; x < 70; x++) for (let y = 1; y < 27; y++) g[y][x] = '#'; for (let x = 30; x < 70; x++) g[26][x] = '#'; });
+  const t = make(room); t.p.x = 27 * TILE; t.input.hold('right'); t.step(3); t.input.hold('down'); t.input.press('dash'); t.step(); t.input.let('down'); t.step(60);
+  truthy('slide: blocked by a 1-tile gap', t.p.x < 30 * TILE, `x ${(t.p.x / TILE).toFixed(1)}`); }
+// ----- slide off a ledge -> falls standing; slide-jump keeps the speed; slide hits as a low kick
+{ const t = make(); t.input.hold('down'); t.input.press('dash'); t.step(5); t.input.let('down'); t.input.press('jump'); t.step();
+  truthy('slide: jump out of it', t.p.vy < -800 && t.p.h === char.hurtbox.h && Math.abs(t.p.vx) > 650, `vx ${t.p.vx.toFixed(0)}`); }
+{ const { resolveHits } = await import('../src/combat/combat.js');
+  const t = make(); const target = { hits: 0, box: () => ({ x: t.p.x0 + 200, y: t.p.y - 150, w: 60, h: 150 }), onHit() { this.hits++; } };
+  t.p.x0 = t.p.x; t.input.hold('down'); t.input.press('dash'); t.step(); t.input.let('down');
+  let stops = 0; while (t.p.stateName === 'slide') { t.step(); resolveHits(t.p, [target], { hitStop() { stops++; }, shake() {} }); }
+  truthy('slide: low kick hits once', target.hits === 1 && stops === 1, target.hits + ' hits'); }
+
 // ===== ROOMS + TRANSITIONS =====
 const readJSON = rel => JSON.parse(readFileSync(new URL('../' + rel, import.meta.url)));
 const worldJSON = readJSON('data/world.json');

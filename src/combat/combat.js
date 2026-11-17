@@ -4,7 +4,7 @@
 const overlap = (a, b) => a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
 
 export function resolveHits(player, targets, fx) {
-  const a = player.attack; if (!a) return;
+  const a = player.attack || player.slideStrike; if (!a) return;   // an attack, or the slide's low kick
   const boxes = player.activeHitboxes(); if (!boxes.length) return;
   for (const t of targets) {
     const last = a.hit.get(t);

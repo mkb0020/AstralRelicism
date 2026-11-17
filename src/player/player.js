@@ -13,6 +13,7 @@ export function prepareCharacter(json) {   // fill in derived values once, after
   char.timing.doubleJumpTime = dj ? dj.inTime + dj.spinTime + dj.outTime : 0.54;
   char.hurtbox = Object.assign({ w: 38, h: 148 }, char.hurtbox);
   char.buttons = char.buttons || {};
+  char.fx = char.fx || {};
   char.attacks = char.attacks || {};
   for (const [name, d] of Object.entries(char.attacks)) {   // frame data: add each frame's end time (s) and its phase
     let t = 0; const hits = d.frames.map(f => !!(f.hit && f.hit.length)), first = hits.indexOf(true), last = hits.lastIndexOf(true);
@@ -198,14 +199,33 @@ export class Player {
     if (def.momentumKeep != null) this.vx *= def.momentumKeep;   // 'slowed': she keeps part of her run speed and coasts down
     this.wallJumpLock = 0;
     this.setState('attack');               // (leaves a dash / wall slide; exit() of the old attack clears this.attack first)
-    this.attack = { def, name, t: 0, frame: 0, dir: this.facing, hit: new Set() };
+    this.attack = { def, name, t: 0, frame: 0, dir: this.facing, hit: new Map() };
     this.emit('attack', name);
     return true;
   }
 
   activeHitboxes() {                       // world rects of the frame on screen (frame data is relative to her feet, facing right)
     const a = this.attack; if (!a) return [];
-    const boxes = a.def.frames[a.frame].hit || [];
-    return boxes.map(b => ({ x: a.dir > 0 ? this.x + b.x : this.x - b.x - b.w, y: this.y + b.y, w: b.w, h: b.h }));
+    const f = a.def.frames[a.frame];
+    const boxes = (f.hit || []).map(b => ({ x: a.dir > 0 ? this.x + b.x : this.x - b.x - b.w, y: this.y + b.y, w: b.w, h: b.h }));
+    const r = this.beamRay(); if (r) boxes.push({ x: Math.min(r.x0, r.x1), y: r.y - r.h / 2, w: Math.abs(r.x1 - r.x0), h: r.h });
+    return boxes;
+  }
+
+  // A beam frame: a horizontal ray from her hand to the first solid in the way (or maxLen) -> { x0, x1, y, h, dir, blocked }
+  beamRay() {
+    const a = this.attack, b = a && a.def.frames[a.frame].beam; if (!b) return null;
+    const dir = a.dir, x0 = this.x + dir * b.x, y = this.y + b.y, top = y - b.h / 2, bot = y + b.h / 2;
+    const start = a.frame > 0 ? a.def.frames[a.frame - 1].end : 0;           // the beam grows out of her hand over growMs
+    const grow = b.growMs ? Math.min(1, (a.t - start) / (b.growMs / 1000)) : 1;
+    let len = b.maxLen, blocked = false;
+    for (const s of this.room.solids) {
+      if (s.y >= bot || s.y + s.h <= top) continue;
+      const d = dir > 0 ? s.x - x0 : x0 - (s.x + s.w);                     // distance from the hand to the solid's near face
+      if (d < 0 && (dir > 0 ? s.x + s.w > x0 : s.x < x0)) { len = 0; blocked = true; break; }   // hand already inside a wall
+      if (d >= 0 && d < len) { len = d; blocked = true; }
+    }
+    const reach = len * (1 - Math.pow(1 - grow, 3));                          // easeOutCubic
+    return { x0, x1: x0 + dir * reach, y, h: b.h, dir, blocked: blocked && reach >= len - 0.5, len };
   }
 }

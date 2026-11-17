@@ -2,8 +2,8 @@
 // at the start of each fixed step (input.poll()), so nothing is lost or doubled between frames.
 // Rebinding / gamepad later = edit BINDINGS or feed the same queue from another source.
 // TWO LAYOUTS AT ONCE, NO OVERLAP:
-//   arrows + Z X C V   (the Hollow Knight / Celeste style most metroidvania players expect)
-//   WASD + Space, J K, Shift
+//   arrows + Z X C V F   (the Hollow Knight / Celeste style most metroidvania players expect)
+//   WASD + Space, J K L, Shift
 // Up is NOT jump: it stays free for Up + attack, looking up, ladders.
 export const BINDINGS = {
   left:   ['ArrowLeft', 'KeyA'],
@@ -14,6 +14,7 @@ export const BINDINGS = {
   attack: ['KeyX', 'KeyJ'],
   dash:   ['KeyC', 'ShiftLeft', 'ShiftRight'],
   kick:   ['KeyV', 'KeyK'],
+  spell:  ['KeyF', 'KeyL'],
 };
 
 export function createInput(target = window, bindings = BINDINGS) {

@@ -42,10 +42,23 @@
 
   "buttons": {
     "attack": { "ground": "slash", "air": "airSlash" },
-    "kick":   { "ground": "kick",  "air": "airKick" }
+    "kick":   { "ground": "kick",  "air": "airKick" },
+    "spell":  { "ground": "beam" }
   },
 
   "attacks": {
+    "beam": {
+      "sheet": "magicBeam",
+      "movement": "planted",
+      "hitstopMs": 50,
+      "rehitMs": 120,
+      "shake": { "ms": 120, "strength": 5 },
+      "frames": [
+        { "ms": 20 }, { "ms": 20 }, { "ms": 20 }, { "ms": 20 }, { "ms": 20 }, { "ms": 20 }, { "ms": 20 },
+        { "ms": 600, "frame": 7, "beam": { "x": 37, "y": -99, "h": 44, "maxLen": 1400, "growMs": 90 } },
+        { "ms": 140, "frame": 7 }
+      ]
+    },
     "slash": {
       "sheet": "slash",
       "movement": "slowed",
@@ -123,6 +136,13 @@
     }
   },
 
+  "fx": {
+    "beam": {
+      "colors": { "dark": "#450080", "mid": "#830cde", "bright": "#dc4ce8", "accent": "#00ffff", "core": "#ffffff" },
+      "width": 26, "fadeMs": 180, "sparksPerSec": 160
+    }
+  },
+
   "timing": {
     "jumpStartTime": 0.05,
     "landTime": 0.07,
@@ -142,7 +162,8 @@
       "wallSlide": { "src": "wall_slide.png", "frames": 1, "offsetX": 150 },
       "kick":      { "src": "kick.png",       "frames": 6 },
       "airKick":   { "src": "airKick.png",    "frames": 8 },
-      "slash":     { "src": "slash.png",      "frames": 5 }
+      "slash":     { "src": "slash.png",      "frames": 5 },
+      "magicBeam": { "src": "magicBeam.png",  "frames": 8 }
     },
     "anims": {
       "idle":      { "sheet": "idle", "from": 0, "to": 5, "fps": 6 },

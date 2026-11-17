@@ -145,6 +145,29 @@ const kickDef = char.attacks.kick, airDef = char.attacks.airKick;
   truthy('air slash: in the air', t.p.attack && t.p.attack.name === 'airSlash', t.p.stateName);
   let n = 0; while (t.p.stateName === 'attack' && n++ < 40) t.step(); truthy('air slash: ends', t.p.stateName !== 'attack', t.p.stateName); }
 
+// ----- magic beam: 7 fast spark frames, then the held frame fires a ray that stops at the first wall
+{ const beamDef = char.attacks.beam;
+  const room = flatRoom(80, 30, g => { for (let y = 1; y < 28; y++) g[y][45] = '#'; });   // a wall 25 tiles to her right
+  const t = make(room); t.input.hold('right'); t.step(6); t.input.let('right'); t.step(6); t.input.press('spell'); t.step();
+  truthy('beam: enters attack', t.p.attack && t.p.attack.name === 'beam', t.p.stateName);
+  let n = 1; while (!t.p.beamRay() && n < 30) { t.step(); n++; }
+  check('beam: fires after the spark frames', (n - 1) * FIXED_DT, 0.14, 0.021, 's');
+  t.step(6); const r = t.p.beamRay();
+  check('beam: stops at the wall', r.x1, 45 * TILE, 0.5); truthy('beam: knows it hit a wall', r.blocked);
+  const x0 = t.p.x; let m = 0; while (t.p.stateName === 'attack' && m++ < 100) t.step();
+  check('beam: planted', t.p.x - x0, 0, 0.01); check('beam: total time', (n + m + 5) * FIXED_DT, beamDef.total, 0.06, 's');
+  const u = make(); u.input.press('jump'); u.step(10); u.input.press('spell'); u.step();
+  truthy('beam: not in the air (for now)', u.p.stateName !== 'attack', u.p.stateName);
+  const v = make(room); v.p.x = 45 * TILE - 20; v.step(2); v.input.press('spell'); v.step(14); const rv = v.p.beamRay();
+  truthy('beam: point blank -> zero length', rv && Math.abs(rv.x1 - rv.x0) < 1, rv ? (rv.x1 - rv.x0).toFixed(1) : 'no ray'); }
+// ----- multi-hit: a beam hits a target again every rehitMs, freezes only on the first hit
+{ const { resolveHits } = await import('../src/combat/combat.js');
+  const t = make(); t.input.press('spell'); t.step();
+  const target = { hits: 0, box: () => ({ x: t.p.x + 300, y: t.p.y - 200, w: 60, h: 200 }), onHit() { this.hits++; } };
+  let stops = 0; const fx = { hitStop() { stops++; }, shake() {} };
+  while (t.p.stateName === 'attack') { t.step(); resolveHits(t.p, [target], fx); }
+  truthy('beam: hits repeatedly', target.hits >= 4 && target.hits <= 6, target.hits + ' hits'); truthy('beam: hitstop once', stops === 1, stops + ''); }
+
 // ===== ROOMS + TRANSITIONS =====
 const readJSON = rel => JSON.parse(readFileSync(new URL('../' + rel, import.meta.url)));
 const worldJSON = readJSON('data/world.json');

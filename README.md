@@ -29,6 +29,7 @@ Two layouts work at the same time:
 | Slash (air slash while airborne) | X | J |
 | Dash | C | Shift |
 | Kick (air kick while airborne) | V | K |
+| Magic beam (ground only for now) | F | L |
 
 Debug keys: **F1** hitboxes + readout · **F2** squash, stretch + camera shake · **F3** live tuning panel · **F4** view mode (fit / pixel) ·
 **G** grid · **R** respawn at the last door · **N** jump to the next room · **P** pause · **O** step one frame · **1 / 2 / 3** toggle double jump / wall slide + jump / dash.
@@ -66,6 +67,8 @@ Attacks are animation-driven and live in `data/characters/nova.json` under `"att
 - One entry per sprite frame. `ms` = how long it shows. Frames before the first `hit` are **startup**, frames with a `hit` are **active**, the rest are **recovery**.
 - `hit` boxes are in world px relative to her feet, drawn facing right (they mirror automatically). `y` is negative going up.
 - `"slowed"` attacks keep `momentumKeep` × her speed when they start, then ease toward `slowFactor` × run speed while forward is held (to a stop if not) at `decelScale` × her normal decel.
+- A `"beam"` on a frame (`x`, `y` = where it leaves her hand, `h` = thickness, `maxLen`, `growMs`) makes a hitbox from her hand to the first wall in the way. `"rehitMs"` lets an attack hit the same target again every so often (the beam); hitstop only happens on its first hit.
+- `"frame"` on a frame entry picks the sprite frame to show, so one sprite frame can be held for several entries.
 - `vx` on a frame = forward speed while that frame shows (the air kick's lunge). It goes through collision like all movement.
 - Aerials: `"air": true`, `"gravity"` (1 normal, 0.3 floaty, 0 hang), `"vyKeep"` (how much vertical speed survives the start), `"onLand"` (`"cancel"` or `"continue"`), `"oncePerAirtime"`.
 - A jump pressed mid-attack waits in the jump buffer and fires at the cancel window or when the attack ends.
@@ -95,6 +98,10 @@ Attacks are animation-driven and live in `data/characters/nova.json` under `"att
 
 Test rooms: `greybox` → east door → `annex` → lower west door → `cellar` → ceiling hatch → back into the greybox's wide pit.
 
+## Effects
+
+The beam's look is a vector effect (`src/fx/beamFx.js`, from the Vector Spell Lab): the same line stroked 4 times, thick and dark to thin and white, with additive blending for the glow, two rippling strands and an impact flash with sparks where it hits a wall. No shadow blur anywhere; it costs about 0.1 ms a frame. Colours, width, fade time and spark rate are in `nova.json` under `"fx"`.
+
 ## Layout
 
 ```
@@ -109,6 +116,7 @@ src/
   core/      loop.js (fixed step + hitstop)  input.js (actions, buffered per step)  assets.js  math.js
   world/     world.js (rooms + exits)  room.js (map -> collision shapes)  collision.js (AABB, X then Y)  roomRender.js (greybox)  dummy.js
   combat/    combat.js (hitboxes vs targets, hitstop + shake on a hit)
+  fx/        beamFx.js (vector beam)
   player/    player.js (controller)  states.js (state machine)  physics.js (schema)  playerView.js (sprites, squash)
   render/    camera.js (follow + vertical dead zone, clamped to the room)
   debug/     debug.js (overlay, tuning panel, debug keys)
@@ -126,7 +134,7 @@ The controller has no DOM or drawing code, which is why it can be tested headles
 - [x] 2. Player controller in a greybox room on the 40 px grid; F1 debug overlay; live tuning
 - [x] 3. Animations: idle / run / jump / fall / land / wall slide / dash / double jump
 - [x] 4. Camera + room transitions; rooms in Tile Lab's map format
-- [x] 5. Attacks with frame data: kick, air kick, slash, air slash *(beam, down strike still to come)*
+- [x] 5. Attacks with frame data: kick, air kick, slash, air slash magic beam *(down strike still to come)*
 
 Later: slide + low kick, grapple, Witch Time, magic beam, down strike, slopes, knockback / i-frames / damage, rebinding / gamepad.
 

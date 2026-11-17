@@ -53,7 +53,7 @@
   ],
   "dummies": [{"col": 9, "row": 37}, {"col": 29, "row": 37}],
   "labels": [
-    {"col": 7, "row": 32, "text": "SLASH: X or J    KICK: V or K    (both work in the air)"},
+    {"col": 7, "row": 32, "text": "SLASH: X or J    KICK: V or K    BEAM: F or L"},
     {"col": 3, "row": 30, "text": "SPAWN"},
     {"col": 12, "row": 34, "text": "3 tiles"},
     {"col": 19, "row": 33, "text": "4 tiles"},

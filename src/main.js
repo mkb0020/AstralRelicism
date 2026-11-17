@@ -11,6 +11,7 @@ import { PlayerView } from './player/playerView.js';
 import { createCamera } from './render/camera.js';
 import { createDebug } from './debug/debug.js';
 import { resolveHits } from './combat/combat.js';
+import { BeamFx } from './fx/beamFx.js';
 
 const canvas = document.getElementById('game'), ctx = canvas.getContext('2d');
 
@@ -40,6 +41,7 @@ async function boot() {
   let room = world.rooms[world.start];
   const player = new Player(char, room);
   const view = new PlayerView(char);
+  const beamFx = new BeamFx(char.fx && char.fx.beam);
   await view.load();
   try { await document.fonts.load('14px "Share Tech Mono"'); } catch (e) { /* falls back to Consolas */ }
 
@@ -53,7 +55,7 @@ async function boot() {
   let checkpoint = { room, x: room.spawn.x, y: room.spawn.y };   // the last door she walked through (or the room's spawn)
   let transition = null;                                         // { phase: 'out' | 'in', t, arrive }
   function setRoom(next) { room = next; player.room = next; }
-  function respawn() { setRoom(checkpoint.room); player.spawn(checkpoint.x, checkpoint.y); view.reset(); transition = null; snapCamera(); }
+  function respawn() { setRoom(checkpoint.room); player.spawn(checkpoint.x, checkpoint.y); view.reset(); beamFx.reset(); transition = null; snapCamera(); }
   function leaveThrough(exit) {
     if (!exit) { respawn(); return; }                            // out of bounds with no exit there
     player.px = player.x; player.py = player.y;                  // hold her still while the screen fades
@@ -61,7 +63,7 @@ async function boot() {
   }
   function arrive(exit) {
     const a = world.arrival(exit, player, TRANSITION.upBoost);
-    setRoom(a.room);
+    setRoom(a.room); beamFx.reset();
     Object.assign(player, { x: a.x, y: a.y, px: a.x, py: a.y, vy: a.vy, touching: 0, grounded: false });
     if (a.exit.side === 'left' || a.exit.side === 'right') checkpoint = { room: a.room, x: a.x, y: a.exit.hi };   // side doors have a floor to stand on
     snapCamera();
@@ -92,6 +94,7 @@ async function boot() {
     resolveHits(player, room.dummies, { hitStop: sec => loop.hitStop(sec), shake: (dur, str) => { if (view.fxOn) cam.shake(dur, str); } });
     for (const d of room.dummies) d.update(dt);
     view.update(player, dt);
+    beamFx.update(player, dt);
     debug.afterStep(dt);
   }
 
@@ -115,6 +118,7 @@ async function boot() {
     if (debug.overlay) drawExits(ctx, room);
     for (const dm of room.dummies) dm.draw(ctx);
     view.draw(ctx, x, y, player.facing);
+    beamFx.draw(ctx, performance.now() / 1000);
     debug.drawWorld(ctx, x, y);
     ctx.restore();
 
@@ -126,7 +130,7 @@ async function boot() {
   }
 
   loop.start();
-  window.AR = { player, world, cam, loop, view, input, screen, get room() { return room; } };   // for poking around in the console
+  window.AR = { player, beamFx, world, cam, loop, view, input, screen, get room() { return room; } };   // for poking around in the console
 }
 
 boot().catch(e => {

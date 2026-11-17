@@ -195,6 +195,7 @@ export class Player {
     if (def.oncePerAirtime && this.airAttacksUsed[name]) return false;
     if (def.oncePerAirtime) this.airAttacksUsed[name] = true;
     if (def.vyKeep != null) this.vy *= def.vyKeep;
+    if (def.momentumKeep != null) this.vx *= def.momentumKeep;   // 'slowed': she keeps part of her run speed and coasts down
     this.wallJumpLock = 0;
     this.setState('attack');               // (leaves a dash / wall slide; exit() of the old attack clears this.attack first)
     this.attack = { def, name, t: 0, frame: 0, dir: this.facing, hit: new Set() };

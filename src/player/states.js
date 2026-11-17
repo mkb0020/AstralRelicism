@@ -113,7 +113,11 @@ export const STATES = {
       // movement type: planted / slowed / momentum kept / lunge
       if (d.movement === 'lunge') p.vx = a.dir * (f.vx || 0);
       else if (d.movement === 'planted') p.vx = 0;
-      else p.vx = approach(p.vx, 0, (p.grounded ? p.phys.groundDecel : p.phys.airDecel) * (d.decelScale != null ? d.decelScale : 1) * dt);   // slowed + momentum: coast down
+      else {                                                                   // slowed / momentum: ease toward a reduced speed
+        const fwd = input.axisX() === a.dir ? 1 : 0;                           // holding forward keeps her moving at slowFactor x run speed; otherwise she coasts to a stop
+        const target = d.movement === 'slowed' ? a.dir * fwd * p.phys.moveSpeed * (d.slowFactor != null ? d.slowFactor : 0.35) : p.vx;
+        p.vx = approach(p.vx, target, (p.grounded ? p.phys.groundDecel : p.phys.airDecel) * (d.decelScale != null ? d.decelScale : 1) * dt);
+      }
       if (f.vx != null && d.movement !== 'lunge') p.vx = a.dir * f.vx;          // a per-frame step / push on any attack
       p.gravityScale = p.grounded ? 1 : (d.gravity != null ? d.gravity : 1);    // gravity during aerials: 1 normal, <1 reduced, 0 hang
       a.t += dt;

@@ -41,10 +41,48 @@
   },
 
   "buttons": {
-    "kick": { "ground": "kick", "air": "airKick" }
+    "attack": { "ground": "slash", "air": "airSlash" },
+    "kick":   { "ground": "kick",  "air": "airKick" }
   },
 
   "attacks": {
+    "slash": {
+      "sheet": "slash",
+      "movement": "slowed",
+      "momentumKeep": 0.6,
+      "slowFactor": 0.35,
+      "decelScale": 0.25,
+      "hitstopMs": 70,
+      "shake": { "ms": 140, "strength": 7 },
+      "cancel": { "from": 4, "into": ["jump", "dash", "attack"] },
+      "frames": [
+        { "ms": 60 },
+        { "ms": 40 },
+        { "ms": 50, "hit": [{ "x": -10, "y": -125, "w": 115, "h": 85 }] },
+        { "ms": 50, "hit": [{ "x": 0, "y": -110, "w": 100, "h": 70 }] },
+        { "ms": 80 }
+      ]
+    },
+    "airSlash": {
+      "sheet": "slash",
+      "air": true,
+      "onLand": "continue",
+      "movement": "slowed",
+      "momentumKeep": 0.7,
+      "slowFactor": 0.5,
+      "decelScale": 0.5,
+      "gravity": 0.7,
+      "hitstopMs": 70,
+      "shake": { "ms": 140, "strength": 7 },
+      "cancel": { "from": 4, "into": ["jump", "dash", "attack"] },
+      "frames": [
+        { "ms": 60 },
+        { "ms": 40 },
+        { "ms": 50, "hit": [{ "x": -10, "y": -125, "w": 115, "h": 85 }] },
+        { "ms": 50, "hit": [{ "x": 0, "y": -110, "w": 100, "h": 70 }] },
+        { "ms": 80 }
+      ]
+    },
     "kick": {
       "sheet": "kick",
       "movement": "planted",
@@ -103,7 +141,8 @@
       "jump":      { "src": "jump.png",       "frames": 7, "snapFrames": [6] },
       "wallSlide": { "src": "wall_slide.png", "frames": 1, "offsetX": 150 },
       "kick":      { "src": "kick.png",       "frames": 6 },
-      "airKick":   { "src": "airKick.png",    "frames": 8 }
+      "airKick":   { "src": "airKick.png",    "frames": 8 },
+      "slash":     { "src": "slash.png",      "frames": 5 }
     },
     "anims": {
       "idle":      { "sheet": "idle", "from": 0, "to": 5, "fps": 6 },

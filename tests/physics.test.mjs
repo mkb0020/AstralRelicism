@@ -128,6 +128,23 @@ const kickDef = char.attacks.kick, airDef = char.attacks.airKick;
   const u = make(); u.input.hold('left'); u.step(3); u.input.let('left'); u.step(10); u.input.press('kick'); u.step(9); const l = u.p.activeHitboxes()[0];
   truthy('hitbox: in front of her, both ways', !!r && !!l && r.x > t.p.x && l.x + l.w < u.p.x, r && l ? `right ${(r.x - t.p.x).toFixed(0)}, left ${(l.x + l.w - u.p.x).toFixed(0)}` : 'no hitbox'); }
 
+// ----- slash: 'slowed' (keeps some run speed, coasts down), hits on frames 2-3, can chain into another slash
+{ const slashDef = char.attacks.slash;
+  const t = make(); t.input.hold('right'); t.step(10); const x0 = t.p.x; t.input.press('attack'); t.step();
+  truthy('slash: enters attack', t.p.attack && t.p.attack.name === 'slash', t.p.stateName);
+  let n = 1, active = 0; while (t.p.stateName === 'attack' && n < 60) { if (t.p.activeHitboxes().length) active++; t.step(); n++; }
+  const moved = t.p.x - x0;
+  truthy('slash: slowed, not planted or full speed', moved > 40 && moved < 650 * slashDef.total * 0.6, moved.toFixed(0) + ' px while holding forward');
+  const w = make(); w.input.hold('right'); w.step(10); w.input.let('right'); const wx = w.p.x; w.input.press('attack'); w.step(14);
+  truthy('slash: coasts to a stop when not held', w.p.vx === 0 && w.p.x - wx > 10, (w.p.x - wx).toFixed(0) + ' px');
+  check('slash: duration', (n - 1) * FIXED_DT, slashDef.total, 0.021, 's'); truthy('slash: hitbox on the swing frames', active >= 4 && active <= 6, active + ' steps');
+  const u = make(); u.input.press('attack'); u.step(); let k = 0; while (u.p.attack.frame < 4 && k++ < 30) u.step(); u.input.press('attack'); u.step();
+  truthy('slash: chains in the cancel window', u.p.attack && u.p.attack.frame === 0 && u.p.attack.t < 0.05, u.p.attack ? 'frame ' + u.p.attack.frame : u.p.stateName); }
+// ----- air slash: reduced gravity, carries on through a landing
+{ const t = make(); t.input.press('jump'); t.step(30); t.input.press('attack'); t.step();
+  truthy('air slash: in the air', t.p.attack && t.p.attack.name === 'airSlash', t.p.stateName);
+  let n = 0; while (t.p.stateName === 'attack' && n++ < 40) t.step(); truthy('air slash: ends', t.p.stateName !== 'attack', t.p.stateName); }
+
 // ===== ROOMS + TRANSITIONS =====
 const readJSON = rel => JSON.parse(readFileSync(new URL('../' + rel, import.meta.url)));
 const worldJSON = readJSON('data/world.json');

@@ -26,7 +26,7 @@ Two layouts work at the same time:
 | Move | ← → | A / D |
 | Up / down (aim, later) | ↑ ↓ | W / S |
 | Jump (hold = higher, tap = hop) | Z | Space |
-| Attack *(not in yet)* | X | J |
+| Slash (air slash while airborne) | X | J |
 | Dash | C | Shift |
 | Kick (air kick while airborne) | V | K |
 
@@ -65,6 +65,7 @@ Attacks are animation-driven and live in `data/characters/nova.json` under `"att
 
 - One entry per sprite frame. `ms` = how long it shows. Frames before the first `hit` are **startup**, frames with a `hit` are **active**, the rest are **recovery**.
 - `hit` boxes are in world px relative to her feet, drawn facing right (they mirror automatically). `y` is negative going up.
+- `"slowed"` attacks keep `momentumKeep` × her speed when they start, then ease toward `slowFactor` × run speed while forward is held (to a stop if not) at `decelScale` × her normal decel.
 - `vx` on a frame = forward speed while that frame shows (the air kick's lunge). It goes through collision like all movement.
 - Aerials: `"air": true`, `"gravity"` (1 normal, 0.3 floaty, 0 hang), `"vyKeep"` (how much vertical speed survives the start), `"onLand"` (`"cancel"` or `"continue"`), `"oncePerAirtime"`.
 - A jump pressed mid-attack waits in the jump buffer and fires at the cancel window or when the attack ends.
@@ -125,7 +126,7 @@ The controller has no DOM or drawing code, which is why it can be tested headles
 - [x] 2. Player controller in a greybox room on the 40 px grid; F1 debug overlay; live tuning
 - [x] 3. Animations: idle / run / jump / fall / land / wall slide / dash / double jump
 - [x] 4. Camera + room transitions; rooms in Tile Lab's map format
-- [x] 5. Attacks with frame data: kick + air kick *(slash, beam, down strike still to come)*
+- [x] 5. Attacks with frame data: kick, air kick, slash, air slash *(beam, down strike still to come)*
 
 Later: slide + low kick, grapple, Witch Time, magic beam, down strike, slopes, knockback / i-frames / damage, rebinding / gamepad.
 
